@@ -1170,6 +1170,7 @@ hdfs cacheadmin [-help &lt;command-name&gt;]
     hdfs dfsadmin [-fetchImage &lt;local directory&gt;]
     hdfs dfsadmin [-allowSnapshot &lt;snapshotDir&gt;]
     hdfs dfsadmin [-disallowSnapshot &lt;snapshotDir&gt;]
+    hdfs dfsadmin [-provisionSnapshotTrash &lt;snapshotDir&gt; [-all]]
     hdfs dfsadmin [-shutdownDatanode &lt;datanode_host:ipc_port&gt; [upgrade]]
     hdfs dfsadmin [-evictWriters &lt;datanode_host:ipc_port&gt;]
     hdfs dfsadmin [-getDatanodeInfo &lt;datanode_host:ipc_port&gt;]
@@ -1272,24 +1273,27 @@ hdfs cacheadmin [-help &lt;command-name&gt;]
 <td align="left"> <code>-disallowSnapshot</code> &lt;snapshotDir&gt; </td>
 <td align="left"> Disallowing snapshots of a directory to be created. All snapshots of the directory must be deleted before disallowing snapshots. See the <a href="./HdfsSnapshots.html">HDFS Snapshot Documentation</a> for more information. </td></tr>
 <tr class="b">
+<td align="left"> <code>-provisionSnapshotTrash</code> &lt;snapshotDir&gt; [-all] </td>
+<td align="left"> Provision trash root in one or all snapshottable directories. See the <a href="./HdfsSnapshots.html">HDFS Snapshot Documentation</a> for more information. </td></tr>
+<tr class="a">
 <td align="left"> <code>-shutdownDatanode</code> &lt;datanode_host:ipc_port&gt; [upgrade] </td>
 <td align="left"> Submit a shutdown request for the given datanode. See <a href="./HdfsRollingUpgrade.html#dfsadmin_-shutdownDatanode">Rolling Upgrade document</a> for the detail. </td></tr>
-<tr class="a">
+<tr class="b">
 <td align="left"> <code>-evictWriters</code> &lt;datanode_host:ipc_port&gt; </td>
 <td align="left"> Make the datanode evict all clients that are writing a block. This is useful if decommissioning is hung due to slow writers. </td></tr>
-<tr class="b">
+<tr class="a">
 <td align="left"> <code>-getDatanodeInfo</code> &lt;datanode_host:ipc_port&gt; </td>
 <td align="left"> Get the information about the given datanode. See <a href="./HdfsRollingUpgrade.html#dfsadmin_-getDatanodeInfo">Rolling Upgrade document</a> for the detail. </td></tr>
-<tr class="a">
+<tr class="b">
 <td align="left"> <code>-metasave</code> filename </td>
 <td align="left"> Save Namenode&#x2019;s primary data structures to <i>filename</i> in the directory specified by hadoop.log.dir property. <i>filename</i> is overwritten if it exists. <i>filename</i> will contain one line for each of the following<br />1. Datanodes heart beating with Namenode<br />2. Blocks waiting to be replicated<br />3. Blocks currently being replicated<br />4. Blocks waiting to be deleted </td></tr>
-<tr class="b">
+<tr class="a">
 <td align="left"> <code>-triggerBlockReport</code> <code>[-incremental]</code> &lt;datanode_host:ipc_port&gt; <code>[-namenode &lt;namenode_host:ipc_port&gt;]</code> </td>
 <td align="left"> Trigger a block report for the given datanode. If &#x2018;incremental&#x2019; is specified, it will be otherwise, it will be a full block report. If &#x2018;-namenode &lt;namenode_host:ipc_port&gt;&#x2019; is given, it only sends block report to a specified namenode. </td></tr>
-<tr class="a">
+<tr class="b">
 <td align="left"> <code>-listOpenFiles</code> <code>[-blockingDecommission]</code> <code>[-path &lt;path&gt;]</code> </td>
 <td align="left"> List all open files currently managed by the NameNode along with client name and client machine accessing them. Open files list will be filtered by given type and path. Add -blockingDecommission option if you only want to list open files that are blocking the DataNode decommissioning. </td></tr>
-<tr class="b">
+<tr class="a">
 <td align="left"> <code>-help</code> [cmd] </td>
 <td align="left"> Displays help for the given command or all commands if none is specified. </td></tr>
 </tbody>

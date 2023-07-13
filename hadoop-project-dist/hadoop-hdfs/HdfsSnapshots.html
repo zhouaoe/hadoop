@@ -534,7 +534,8 @@
 <li><a href="#Administrator_Operations">Administrator Operations</a>
 <ul>
 <li><a href="#Allow_Snapshots">Allow Snapshots</a></li>
-<li><a href="#Disallow_Snapshots">Disallow Snapshots</a></li></ul></li>
+<li><a href="#Disallow_Snapshots">Disallow Snapshots</a></li>
+<li><a href="#Provision_SnapshotTrash">Provision SnapshotTrash</a></li></ul></li>
 <li><a href="#User_Operations">User Operations</a>
 <ul>
 <li><a href="#Create_Snapshots">Create Snapshots</a></li>
@@ -661,7 +662,37 @@
 </table>
 </li>
 </ul>
-<p>See also the corresponding Java API <code>void disallowSnapshot(Path path)</code> in <code>HdfsAdmin</code>.</p></section></section><section>
+<p>See also the corresponding Java API <code>void disallowSnapshot(Path path)</code> in <code>HdfsAdmin</code>.</p></section><section>
+<h4><a name="Provision_SnapshotTrash"></a>Provision SnapshotTrash</h4>
+<p>Provision trash root in one or all snapshottable directories.</p>
+<ul>
+
+<li>
+
+<p>Command:</p>
+
+<div class="source">
+<div class="source">
+<pre>hdfs dfsadmin -provisionSnapshotTrash &lt;path&gt; [-all]
+</pre></div></div>
+</li>
+<li>
+
+<p>Arguments:</p>
+</li>
+</ul>
+<table border="0" class="bodyTable">
+<thead></thead><tbody>
+
+<tr class="a">
+<td> path </td>
+<td> The path of the snapshottable directory. </td></tr>
+<tr class="b">
+<td> -all </td>
+<td> Which is an optional argument, when it is set will provision trash root in all  snapshottable directories. </td></tr>
+</tbody>
+</table>
+<p>See also the corresponding Java API <code>void provisionSnapshotTrash(Path path)</code> in <code>HdfsAdmin</code>.</p></section></section><section>
 <h3><a name="User_Operations"></a>User Operations</h3>
 <p>The section describes user operations. Note that HDFS superuser can perform all the operations without satisfying the permission requirement in the individual operations.</p><section>
 <h4><a name="Create_Snapshots"></a>Create Snapshots</h4>
