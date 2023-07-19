@@ -539,10 +539,7 @@
 <li><a href="#EVERYWHERE:">EVERYWHERE:</a>
 <ul>
 <li><a href="#State-Store:">State-Store:</a></li>
-<li><a href="#Optional:">Optional:</a></li></ul></li></ul></li>
-<li><a href="#How_to_configure_the_policy-manager.3F">How to configure the policy-manager?</a></li>
-<li><a href="#How_to_configure_the_queue_policy.3F">How to configure the queue policy?</a>
-<ul>
+<li><a href="#Optional:">Optional:</a></li></ul></li>
 <li><a href="#ON_RMs:">ON RMs:</a></li>
 <li><a href="#ON_ROUTER:">ON ROUTER:</a></li>
 <li><a href="#ON_NMs:">ON NMs:</a></li></ul></li>
@@ -771,9 +768,12 @@
 <td align="left"> <code>&lt;path of machine-list file&gt;</code> </td>
 <td align="left"> Path of machine-list file used by <code>SubClusterResolver</code>. Each line of the file is a node with sub-cluster and rack information. Below is the example: <br /> <br /> node1, subcluster1, rack1 <br /> node2, subcluster2, rack1 <br /> node3, subcluster3, rack2 <br /> node4, subcluster3, rack2 </td></tr>
 </tbody>
-</table></section></section></section><section>
-<h2><a name="How_to_configure_the_policy-manager.3F"></a>How to configure the policy-manager?</h2>
-<p>Router Policy</p>
+</table>
+<p><b>How to configure the policy-manager?</b></p>
+<ul>
+
+<li>Router Policy</li>
+</ul>
 <p>Router Policy defines the logic for determining the routing of an application submission and determines the HomeSubCluster for the application.</p>
 <ul>
 
@@ -834,8 +834,11 @@
 <li>This policy implements a weighted random sample among currently active sub-clusters.</li>
 </ul>
 </li>
-</ul>
+<li>
+
 <p>AMRM Policy</p>
+</li>
+</ul>
 <p>AMRM Proxy defines the logic to split the resource request list received by AM among RMs.</p>
 <ul>
 
@@ -865,8 +868,11 @@
 <li>This policy simply rejects all requests. Useful to prevent apps from accessing any sub-cluster.</li>
 </ul>
 </li>
-</ul>
+<li>
+
 <p>Policy Manager</p>
+</li>
+</ul>
 <p>The PolicyManager is providing a combination of RouterPolicy and AMRMPolicy.</p>
 <p>We can set policy-manager like this:</p>
 
@@ -925,45 +931,7 @@
 <li>Policy that allows operator to configure &#x201c;weights&#x201d; for routing. This picks a LocalityRouterPolicy for the router and a LocalityMulticastAMRMProxyPolicy for the amrmproxy as they are designed to work together.</li>
 </ul>
 </li>
-</ul></section><section>
-<h2><a name="How_to_configure_the_queue_policy.3F"></a>How to configure the queue policy?</h2>
-<p>We will provide a set of commands to view and save queue policies.</p>
-<p>The Queue Policy(SubClusterPolicyConfiguration) include the following:</p>
-<table border="0" class="bodyTable">
-<thead>
-
-<tr class="a">
-<th align="left"> Property       </th>
-<th align="left"> Description                                                           </th></tr>
-</thead><tbody>
-
-<tr class="b">
-<td align="left"> <code>queue</code>        </td>
-<td align="left"> <code>Queue for Job submission</code>                                            </td></tr>
-<tr class="a">
-<td align="left"> <code>policyType</code>   </td>
-<td align="left"> <code>Policy Manager Class name, Default is UniformBroadcastPolicyManager</code> </td></tr>
-<tr class="b">
-<td align="left"> <code>policyParams</code> </td>
-<td align="left"> <code>It stores serialized objects of WeightedPolicyInfo.</code>                 </td></tr>
-</tbody>
-</table>
-<p>WeightedPolicyInfo include the following:</p>
-<ul>
-
-<li>RouterWeight</li>
-</ul>
-<p>Weight for routing applications to different subclusters. We will route the application to different subclusters based on the configured weights. Assuming we have two subclusters, SC-1 and SC-2, with a weight of 0.7 for SC-1 and 0.3 for SC-2, the application will be allocated in such a way that 70% of the applications will be assigned to SC-1 and 30% to SC-2.</p>
-<ul>
-
-<li>AmRMWeight</li>
-</ul>
-<p>Weight for resource request from ApplicationMaster (AM) to different subclusters&#x2019; Resource Manager (RM). Assuming we have two subclusters, SC-1 and SC-2, with a weight of 0.6 for SC-1 and 0.4 for SC-2, When AM requesting resources, 60% of the requests will be made to the Resource Manager (RM) of SC-1 and 40% to the RM of SC-2.</p>
-<ul>
-
-<li>HeadRoomAlpha</li>
-</ul>
-<p>used by policies that balance weight-based and load-based considerations in their decisions. For policies that use this parameter, values close to 1 indicate that most of the decision should be based on currently observed headroom from various sub-clusters, values close to zero, indicate that the decision should be mostly based on weights and practically ignore current load.</p><section>
+</ul></section></section><section>
 <h3><a name="ON_RMs:"></a>ON RMs:</h3>
 <p>These are extra configurations that should appear in the <b>conf/yarn-site.xml</b> at each ResourceManager.</p>
 <table border="0" class="bodyTable">
