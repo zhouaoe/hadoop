@@ -2022,7 +2022,23 @@ org.apache.http.NoHttpResponseException: bucket.s3.amazonaws.com:443 failed to r
   at java.lang.Thread.run(Thread.java:745)
 </pre></div></div>
 
-<p>These are HTTP I/O exceptions caught and logged inside the AWS SDK. The client will attempt to retry the operation; it may just be a transient event. If there are many such exceptions in logs, it may be a symptom of connectivity or network problems.</p></section><section>
+<p>These are HTTP I/O exceptions caught and logged inside the AWS SDK. The client will attempt to retry the operation; it may just be a transient event. If there are many such exceptions in logs, it may be a symptom of connectivity or network problems.</p>
+<p>The above error could be because of a stale http connections. The default value in AWS SDK is set to -1 (infinite) which means the connection will be reused indefinitely. We have introduced a new config <code>fs.s3a.connection.ttl</code> to configure this. Tuning this setting down (together with an appropriately-low setting for Java&#x2019;s DNS cache TTL) ensures that your application will quickly rotate over to new IP addresses when the service begins announcing them through DNS, at the cost of having to re-establish new connections more frequently.</p>
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.s3a.connection.ttl&lt;/name&gt;
+  &lt;value&gt;300000&lt;/value&gt;
+  &lt;description&gt;
+      Expiration time for a connection in the connection pool in milliseconds.
+      When a connection is retrieved from the connection pool,
+      this parameter is checked to see if the connection can be reused.
+      Default value is 5 minutes.
+  &lt;/description&gt;
+&lt;/property&gt;
+</pre></div></div>
+</section><section>
 <h3><a name="AWSBadRequestException_IllegalLocationConstraintException.2FThe_unspecified_location_constraint_is_incompatible"></a><code>AWSBadRequestException</code> IllegalLocationConstraintException/The unspecified location constraint is incompatible</h3>
 
 <div class="source">
