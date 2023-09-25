@@ -771,7 +771,29 @@
 <td align="left"> <code>&lt;path of machine-list file&gt;</code> </td>
 <td align="left"> Path of machine-list file used by <code>SubClusterResolver</code>. Each line of the file is a node with sub-cluster and rack information. Below is the example: <br /> <br /> node1, subcluster1, rack1 <br /> node2, subcluster2, rack1 <br /> node3, subcluster3, rack2 <br /> node4, subcluster3, rack2 </td></tr>
 </tbody>
-</table></section></section></section><section>
+</table>
+<ul>
+
+<li>yarn.federation.policy-manager-params</li>
+</ul>
+<p>To configure the <code>yarn.federation.policy-manager-params</code> parameter, which represents the weight policy for the default queue, and where the relevant information will be parsed as <code>WeightedPolicyInfo</code>.</p>
+<p>We can use the following JSON format for configuration:</p>
+
+<div class="source">
+<div class="source">
+<pre>    &lt;property&gt;
+       &lt;name&gt;yarn.federation.policy-manager-params&lt;/name&gt;
+       &lt;value&gt;{&quot;routerPolicyWeights&quot;:{&quot;entry&quot;:[{&quot;key&quot;:{&quot;id&quot;:&quot;SC-2&quot;},&quot;value&quot;:&quot;0.3&quot;},{&quot;key&quot;:{&quot;id&quot;:&quot;SC-1&quot;},&quot;value&quot;:&quot;0.7&quot;}]},&quot;amrmPolicyWeights&quot;:{&quot;entry&quot;:[{&quot;key&quot;:{&quot;id&quot;:&quot;SC-2&quot;},&quot;value&quot;:&quot;0.4&quot;},{&quot;key&quot;:{&quot;id&quot;:&quot;SC-1&quot;},&quot;value&quot;:&quot;0.6&quot;}]},&quot;headroomAlpha&quot;:&quot;1.0&quot;}&lt;/value&gt;
+    &lt;/property&gt;
+</pre></div></div>
+
+<p>This JSON configuration allows you to define the weight policy for default queue, where:</p>
+<ul>
+
+<li>The <code>routerPolicyWeights</code> section specifies the weightings for router policies. For instance, with a weight of <code>0.3</code> assigned to <code>SC-2</code> and <code>0.7</code> assigned to <code>SC-1</code>, this configuration will allocate <code>30%</code> of submitted application requests to <code>SC-2</code> and <code>70%</code> to <code>SC-1</code>.</li>
+<li>The <code>amrmPolicyWeights</code> represents the allocation ratios for Application Master when request containers from different subclusters&#x2019; RM. For instance, when an AM requests containers, it will request <code>40%</code> of the containers from <code>SC-2</code> and <code>60%</code> of the containers from <code>SC-1</code>.</li>
+<li>The <code>headroomAlpha</code> used by policies that balance weight-based and load-based considerations in their decisions. For policies that use this parameter, values close to 1 indicate that most of the decision should be based on currently observed headroom from various sub-clusters, values close to zero, indicate that the decision should be mostly based on weights and practically ignore current load.</li>
+</ul></section></section></section><section>
 <h2><a name="How_to_configure_the_policy-manager"></a>How to configure the policy-manager</h2>
 <p>Router Policy</p>
 <p>Router Policy defines the logic for determining the routing of an application submission and determines the HomeSubCluster for the application.</p>
