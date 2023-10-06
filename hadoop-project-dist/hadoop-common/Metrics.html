@@ -1823,11 +1823,23 @@
 <td align="left"> <code>PacketsSlowWriteToOsCache</code> </td>
 <td align="left"> Total number of packets whose write to os cache takes more than a certain time (300ms by default) </td></tr>
 <tr class="b">
-<td align="left"> <code>slowFlushOrSyncCount</code> </td>
+<td align="left"> <code>SlowFlushOrSyncCount</code> </td>
 <td align="left"> Total number of packets whose sync/flush takes more than a certain time (300ms by default) </td></tr>
 <tr class="a">
-<td align="left"> <code>slowAckToUpstreamCount</code> </td>
+<td align="left"> <code>SlowAckToUpstreamCount</code> </td>
 <td align="left"> Total number of packets whose upstream ack takes more than a certain time (300ms by default) </td></tr>
+<tr class="b">
+<td align="left"> <code>SumOfActorCommandQueueLength</code> </td>
+<td align="left"> Sum of all BPServiceActors command queue length </td></tr>
+<tr class="a">
+<td align="left"> <code>NumProcessedCommands</code> </td>
+<td align="left"> Num of processed commands of all BPServiceActors </td></tr>
+<tr class="b">
+<td align="left"> <code>ProcessedCommandsOpNumOps</code> </td>
+<td align="left"> Total number of processed commands operations </td></tr>
+<tr class="a">
+<td align="left"> <code>ProcessedCommandsOpAvgTime</code> </td>
+<td align="left"> Average time of processed commands operations in milliseconds </td></tr>
 </tbody>
 </table></section><section>
 <h2><a name="FsVolume"></a>FsVolume</h2>
