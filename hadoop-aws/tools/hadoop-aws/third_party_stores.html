@@ -538,9 +538,10 @@
 <li>Content encodings as set with <code>fs.s3a.object.content.encoding</code>.</li>
 <li>Optional Bucket Probes at startup (<code>fs.s3a.bucket.probe = 0</code>). This is now the default -do not change it.</li>
 <li>List API to use (<code>fs.s3a.list.version = 1</code>)</li>
+<li>Bucket lifecycle rules to clean up pending uploads.</li>
 </ul><section>
-<h2><a name="Configuring_s3a_to_connect_to_a_third_party_store"></a>Configuring s3a to connect to a third party store</h2><section>
-<h3><a name="Connecting_to_a_third_party_object_store_over_HTTPS"></a>Connecting to a third party object store over HTTPS</h3>
+<h2><a name="Configuring_s3a_to_connect_to_a_third_party_store"></a>Configuring s3a to connect to a third party store</h2></section><section>
+<h2><a name="Connecting_to_a_third_party_object_store_over_HTTPS"></a>Connecting to a third party object store over HTTPS</h2>
 <p>The core setting for a third party store is to change the endpoint in <code>fs.s3a.endpoint</code>.</p>
 <p>This can be a URL or a hostname/hostname prefix For third-party stores without virtual hostname support, providing the URL is straightforward; path style access must also be enabled in <code>fs.s3a.path.style.access</code>.</p>
 <p>The v4 signing algorithm requires a region to be set in <code>fs.s3a.endpoint.region</code>. A non-empty value is generally sufficient, though some deployments may require a specific value.</p>
@@ -575,7 +576,33 @@
 
 </pre></div></div>
 
-<p>If per-bucket settings are used here, then third-party stores and credentials may be used alongside an AWS store.</p>
+<p>If per-bucket settings are used here, then third-party stores and credentials may be used alongside an AWS store.</p></section><section>
+<h2><a name="Other_issues"></a>Other issues</h2><section>
+<h3><a name="Coping_without_bucket_lifecycle_rules"></a>Coping without bucket lifecycle rules</h3>
+<p>Not all third-party stores support bucket lifecycle rules to clean up buckets of incomplete uploads.</p>
+<p>This can be addressed in two ways * Command line: <code>hadoop s3guard uploads -abort -force \&lt;path&gt;</code>. * With <code>fs.s3a.multipart.purge</code> and a purge age set in <code>fs.s3a.multipart.purge.age</code> * In rename/delete <code>fs.s3a.directory.operations.purge.uploads = true</code>.</p><section>
+<h4><a name="S3Guard_uploads_command"></a>S3Guard uploads command</h4>
+<p>This can be executed on a schedule, or manually</p>
+
+<div class="source">
+<div class="source">
+<pre>hadoop s3guard uploads -abort -force s3a://bucket/
+</pre></div></div>
+
+<p>Consult the <a href="s3guard.html">S3Guard documentation</a> for the full set of parameters.</p></section><section>
+<h4><a name="In_startup:_fs.s3a.multipart.purge"></a>In startup: <code>fs.s3a.multipart.purge</code></h4>
+<p>This lists all uploads in a bucket when a filesystem is created and deletes all of those above a certain age.</p>
+<p>This can hurt performance on a large bucket, as the purge scans the entire tree, and is executed whenever a filesystem is created -which can happen many times during hive, spark, distcp jobs.</p>
+<p>For this reason, this option may be deleted in future, however it has long been available in the S3A client and so guaranteed to work across versions.</p></section><section>
+<h4><a name="During_rename_and_delete:_fs.s3a.directory.operations.purge.uploads"></a>During rename and delete: <code>fs.s3a.directory.operations.purge.uploads</code></h4>
+<p>When <code>fs.s3a.directory.operations.purge.uploads</code> is set, when a directory is renamed or deleted, then in parallel with the delete an attempt is made to list all pending uploads. If there are any, they are aborted (sequentially).</p>
+<ul>
+
+<li>This is disabled by default: it adds overhead and extra cost.</li>
+<li>Because it only applies to the directories being processed, directories which are not renamed or deleted will retain all incomplete uploads.</li>
+<li>There is no age checking: all uploads will be aborted.</li>
+<li>If any other process is writing to the same directory tree, their operations will be cancelled.</li>
+</ul>
 <h1>Troubleshooting</h1>
 <p>The most common problem when talking to third-party stores are</p>
 <ol style="list-style-type: decimal">
@@ -584,7 +611,7 @@
 <li>Path access has not been enabled, the client is generating a host name for the target bucket and it does not exist.</li>
 <li>Invalid authentication credentials.</li>
 <li>JVM HTTPS settings include the certificates needed to negotiate a TLS connection with the store.</li>
-</ol></section></section><section>
+</ol></section></section></section><section>
 <h2><a name="How_to_improve_troubleshooting"></a>How to improve troubleshooting</h2><section>
 <h3><a name="log_more_network_info"></a>log more network info</h3>
 <p>There are some very low level logs.</p>
@@ -873,7 +900,7 @@ software.amazon.awssdk.services.s3.model.S3Exception: null (Service: S3, Status 
 &lt;/configuration&gt;
 </pre></div></div>
 
-<p><i>Note</i> If anyone is set up to test this reguarly, please let the hadoop developer team know if regressions do surface, as it is not a common test configuration.</p></section></section>
+<p><i>Note</i> If anyone is set up to test this reguarly, please let the hadoop developer team know if regressions do surface, as it is not a common test configuration. []</p></section></section>
       </div>
     </div>
     <div class="clear">
