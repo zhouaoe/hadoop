@@ -591,7 +591,7 @@
 
 <div class="source">
 <div class="source">
-<pre>hadoop s3guard bucket-info [-guarded] [-unguarded] [-auth] [-nonauth] [-magic] [-encryption ENCRYPTION] [-markers MARKER] s3a://BUCKET
+<pre>hadoop s3guard bucket-info [-fips] [-magic] [-encryption ENCRYPTION] [-markers MARKER] s3a://BUCKET
 </pre></div></div>
 
 <p>Options</p>
@@ -599,31 +599,22 @@
 <thead>
 
 <tr class="a">
-<th> argument </th>
-<th> meaning </th></tr>
+<th> argument             </th>
+<th> meaning                                                             </th></tr>
 </thead><tbody>
 
 <tr class="b">
-<td> <code>-guarded</code> </td>
-<td> Require S3Guard to be enabled. This will now always fail </td></tr>
+<td> <code>-fips</code>              </td>
+<td> Require FIPS endopint to be in use                                  </td></tr>
 <tr class="a">
-<td> <code>-unguarded</code> </td>
-<td> Require S3Guard to be disabled. This will now always succeed </td></tr>
+<td> <code>-magic</code>             </td>
+<td> Require the S3 filesystem to be support the &#x201c;magic&#x201d; committer       </td></tr>
 <tr class="b">
-<td> <code>-auth</code> </td>
-<td> Require the S3Guard mode to be &#x201c;authoritative&#x201d;. This will now always fail </td></tr>
-<tr class="a">
-<td> <code>-nonauth</code> </td>
-<td> Require the S3Guard mode to be &#x201c;non-authoritative&#x201d;. This will now always fail </td></tr>
-<tr class="b">
-<td> <code>-magic</code> </td>
-<td> Require the S3 filesystem to be support the &#x201c;magic&#x201d; committer </td></tr>
-<tr class="a">
-<td> <code>-markers</code> </td>
+<td> <code>-markers</code>           </td>
 <td> Directory marker status: <code>aware</code>, <code>keep</code>, <code>delete</code>, <code>authoritative</code> </td></tr>
-<tr class="b">
+<tr class="a">
 <td> <code>-encryption &lt;type&gt;</code> </td>
-<td> Require a specific encryption algorithm  </td></tr>
+<td> Require a specific encryption algorithm                             </td></tr>
 </tbody>
 </table>
 <p>The server side encryption options are not directly related to S3Guard, but it is often convenient to check them at the same time.</p>

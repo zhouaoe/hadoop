@@ -530,6 +530,7 @@
 <li><a href="#Options_to_Tune"> Options to Tune</a>
 <ul>
 <li><a href="#Thread_and_connection_pool_settings."> Thread and connection pool settings.</a></li>
+<li><a href="#Timeouts."> Timeouts.</a></li>
 <li><a href="#For_large_data_uploads.2C_tune_the_block_size:_fs.s3a.block.size">For large data uploads, tune the block size: fs.s3a.block.size</a></li>
 <li><a href="#Maybe:_Buffer_Write_Data_in_Memory">Maybe: Buffer Write Data in Memory</a></li></ul></li>
 <li><a href="#DistCP"> DistCP</a>
@@ -738,7 +739,8 @@
 <td> <code>16</code>    </td>
 <td> Extra tasks which can be queued excluding prefetching operations </td></tr>
 </tbody>
-</table>
+</table></section><section>
+<h3><a name="Timeouts."></a><a name="timeouts"></a> Timeouts.</h3>
 <p>Network timeout options can be tuned to make the client fail faster <i>or</i> retry more. The choice is yours. Generally recovery is better, but sometimes fail-fast is more useful.</p>
 <table border="0" class="bodyTable">
 <thead>
