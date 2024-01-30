@@ -663,7 +663,7 @@
 <p>This can be triggered by incompatibilities between the AWS SDK on the classpath and the version which Hadoop was compiled with.</p>
 <p>The AWS SDK JARs change their signature enough between releases that the only way to safely update the AWS SDK version is to recompile Hadoop against the later version.</p>
 <p>The fix is to use the same version of the AWS SDK with which Hadoop was built.</p>
-<p>This can also be caused by having more than one version of an AWS SDK JAR on the classpath. If the full <code>bundle.jar</code> JAR is on the classpath, do not add any of the <code>aws-sdk-</code> JARs <i>except</i> for <code>aws-crt.jar</code> (which is required) and <code>eventstream.jar</code> which is required when using S3 Select.</p></section><section>
+<p>This can also be caused by having more than one version of an AWS SDK JAR on the classpath. If the full <code>bundle.jar</code> JAR is on the classpath, do not add any of the <code>aws-sdk-</code> JARs.</p></section><section>
 <h3><a name="java.lang.NoSuchMethodError_referencing_an_org.apache.hadoop_class"></a><code>java.lang.NoSuchMethodError</code> referencing an <code>org.apache.hadoop</code> class</h3>
 <p>This happens if the <code>hadoop-aws</code> and <code>hadoop-common</code> JARs are out of sync. You can&#x2019;t mix them around: they have to have exactly matching version numbers.</p></section><section>
 <h3><a name="java.lang.NoClassDefFoundError:_org.2Fwildfly.2Fopenssl.2FOpenSSLProvider"></a><code>java.lang.NoClassDefFoundError: org/wildfly/openssl/OpenSSLProvider</code></h3>

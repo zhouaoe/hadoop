@@ -1057,7 +1057,6 @@ header.x-amz-version-id=&quot;null&quot;
 <li>Performance will be reduced. All encrypt/decrypt is now being done on the client.</li>
 <li>Writing files may be slower, as only a single block can be encrypted and uploaded at a time.</li>
 <li>Multipart Uploader API disabled.</li>
-<li>S3 Select is not supported.</li>
 <li>Multipart uploads would be serial, and partSize must be a multiple of 16 bytes.</li>
 <li>maximum message size in bytes that can be encrypted under this mode is 2^36-32, or ~64G, due to the security limitation of AES/GCM as recommended by NIST.</li>
 </ul></section><section>

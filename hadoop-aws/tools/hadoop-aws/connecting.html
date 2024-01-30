@@ -579,7 +579,8 @@
   &lt;name&gt;fs.s3a.endpoint&lt;/name&gt;
   &lt;description&gt;AWS S3 endpoint to connect to. An up-to-date list is
     provided in the AWS Documentation: regions and endpoints. Without this
-    property, the standard region (s3.amazonaws.com) is assumed.
+    property, the endpoint/hostname of the S3 Store is inferred from
+    the value of fs.s3a.endpoint.region, fs.s3a.endpoint.fips and more.
   &lt;/description&gt;
 &lt;/property&gt;
 
@@ -717,8 +718,8 @@
 <ol style="list-style-type: decimal">
 
 <li>Applications running in EC2 infrastructure do not pay for IO to/from <i>local S3 buckets</i>. They will be billed for access to remote buckets. Always use local buckets and local copies of data, wherever possible.</li>
-<li>With the V4 signing protocol, AWS requires the explicit region endpoint to be used &#x2014;hence S3A must be configured to use the specific endpoint. This is done in the configuration option <code>fs.s3a.endpoint</code>.</li>
-<li>All endpoints other than the default endpoint only support interaction with buckets local to that S3 instance.</li>
+<li>With the V4 signing protocol, AWS requires the explicit region endpoint to be used &#x2014;hence S3A must be configured to use the specific endpoint. This is done by setting the regon in the configuration option <code>fs.s3a.endpoint.region</code>, or by explicitly setting <code>fs.s3a.endpoint</code> and <code>fs.s3a.endpoint.region</code>.</li>
+<li>All endpoints other than the default region only support interaction with buckets local to that S3 instance.</li>
 <li>Standard S3 buckets support &#x201c;cross-region&#x201d; access where use of the original <code>us-east-1</code> endpoint allows access to the data, but newer storage types, particularly S3 Express are not supported.</li>
 </ol>
 <p>If the wrong endpoint is used, the request will fail. This may be reported as a 301/redirect error, or as a 400 Bad Request: take these as cues to check the endpoint setting of a bucket.</p>
@@ -728,24 +729,9 @@
 <div class="source">
 <div class="source">
 <pre>&lt;property&gt;
-  &lt;name&gt;fs.s3a.bucket.landsat-pds.endpoint&lt;/name&gt;
-  &lt;value&gt;s3-us-west-2.amazonaws.com&lt;/value&gt;
-&lt;/property&gt;
-
-&lt;property&gt;
-  &lt;name&gt;fs.s3a.bucket.eu-dataset.endpoint&lt;/name&gt;
-  &lt;value&gt;s3.eu-west-1.amazonaws.com&lt;/value&gt;
-&lt;/property&gt;
-</pre></div></div>
-
-<p>Declaring the region for the data is simpler, as it avoid having to look up the full URL and having to worry about historical quirks of regional endpoint hostnames.</p>
-
-<div class="source">
-<div class="source">
-<pre>&lt;property&gt;
   &lt;name&gt;fs.s3a.bucket.landsat-pds.endpoint.region&lt;/name&gt;
   &lt;value&gt;us-west-2&lt;/value&gt;
-  &lt;description&gt;The endpoint for s3a://landsat-pds URLs&lt;/description&gt;
+  &lt;description&gt;The region for s3a://landsat-pds URLs&lt;/description&gt;
 &lt;/property&gt;
 
 &lt;property&gt;
@@ -882,7 +868,7 @@ Received an UnknownHostException when attempting to interact with a service.
 &lt;/property&gt;
 </pre></div></div>
 
-<p>Before using Access Points make sure you&#x2019;re not impacted by the following: - <code>ListObjectsV1</code> is not supported, this is also deprecated on AWS S3 for performance reasons; - The endpoint for S3 requests will automatically change to use <code>s3-accesspoint.REGION.amazonaws.{com | com.cn}</code> depending on the Access Point ARN. While considering endpoints, if you have any custom signers that use the host endpoint property make sure to update them if needed;</p></section><section>
+<p>Before using Access Points make sure you&#x2019;re not impacted by the following: - The endpoint for S3 requests will automatically change to use <code>s3-accesspoint.REGION.amazonaws.{com | com.cn}</code> depending on the Access Point ARN. While considering endpoints, if you have any custom signers that use the host endpoint property make sure to update them if needed;</p></section><section>
 <h2><a name="Debugging_network_problems"></a><a name="debugging"></a> Debugging network problems</h2>
 <p>The <code>storediag</code> command within the utility <a class="externalLink" href="https://github.com/exampleoughran/cloudstore">cloudstore</a> JAR is recommended as the way to view and print settings.</p>
 <p>If <code>storediag</code> doesn&#x2019;t connect to your S3 store, <i>nothing else will</i>.</p></section><section>
