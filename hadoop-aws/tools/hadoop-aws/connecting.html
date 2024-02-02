@@ -526,6 +526,7 @@
 <li><a href="#Third_party_stores"> Third party stores</a></li></ul></li>
 <li><a href="#Connection_Settings"> Connection Settings</a>
 <ul>
+<li><a href="#S3_endpoint_and_region_settings_in_detail"> S3 endpoint and region settings in detail</a></li>
 <li><a href="#Network_timeouts"> Network timeouts</a></li>
 <li><a href="#Low-level_Network_Options"> Low-level Network Options</a></li>
 <li><a href="#Proxy_Settings"> Proxy Settings</a></li></ul></li>
@@ -602,6 +603,20 @@
 
 <p>Historically the S3A connector has preferred the endpoint as defined by the option <code>fs.s3a.endpoint</code>. With the move to the AWS V2 SDK, there is more emphasis on the region, set by the <code>fs.s3a.endpoint.region</code> option.</p>
 <p>Normally, declaring the region in <code>fs.s3a.endpoint.region</code> should be sufficient to set up the network connection to correctly connect to an AWS-hosted S3 store.</p><section>
+<h3><a name="S3_endpoint_and_region_settings_in_detail"></a><a name="s3_endpoint_region_details"></a> S3 endpoint and region settings in detail</h3>
+<ul>
+
+<li>Configs <code>fs.s3a.endpoint</code> and <code>fs.s3a.endpoint.region</code> are used to set values for S3 endpoint and region respectively.</li>
+<li>If <code>fs.s3a.endpoint.region</code> is configured with valid AWS region value, S3A will configure the S3 client to use this value. If this is set to a region that does not match your bucket, you will receive a 301 redirect response.</li>
+<li>If <code>fs.s3a.endpoint.region</code> is not set and <code>fs.s3a.endpoint</code> is set with valid endpoint value, S3A will attempt to parse the region from the endpoint and configure S3 client to use the region value.</li>
+<li>If both <code>fs.s3a.endpoint</code> and <code>fs.s3a.endpoint.region</code> are not set, S3A will use <code>us-east-2</code> as default region and enable cross region access. In this case, S3A does not attempt to override the endpoint while configuring the S3 client.</li>
+<li>If <code>fs.s3a.endpoint</code> is not set and <code>fs.s3a.endpoint.region</code> is set to an empty string, S3A will configure S3 client without any region or endpoint override. This will allow fallback to S3 SDK region resolution chain. More details <a class="externalLink" href="https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html">here</a>.</li>
+<li>If <code>fs.s3a.endpoint</code> is set to central endpoint <code>s3.amazonaws.com</code> and <code>fs.s3a.endpoint.region</code> is not set, S3A will use <code>us-east-2</code> as default region and enable cross region access. In this case, S3A does not attempt to override the endpoint while configuring the S3 client.</li>
+<li>If <code>fs.s3a.endpoint</code> is set to central endpoint <code>s3.amazonaws.com</code> and <code>fs.s3a.endpoint.region</code> is also set to some region, S3A will use that region value and enable cross region access. In this case, S3A does not attempt to override the endpoint while configuring the S3 client.</li>
+</ul>
+<p>When the cross region access is enabled while configuring the S3 client, even if the region set is incorrect, S3 SDK determines the region. This is done by making the request, and if the SDK receives 301 redirect response, it determines the region at the cost of a HEAD request, and caches it.</p>
+<p>Please note that some endpoint and region settings that require cross region access are complex and improving over time. Hence, they may be considered unstable.</p>
+<p>If you are working with third party stores, please check <a href="third_party_stores.html">third party stores in detail</a>.</p></section><section>
 <h3><a name="Network_timeouts"></a><a name="timeouts"></a> Network timeouts</h3>
 <p>See <a href="performance.html#timeouts">Timeouts</a>.</p></section><section>
 <h3><a name="Low-level_Network_Options"></a><a name="networking"></a> Low-level Network Options</h3>
