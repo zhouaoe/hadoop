@@ -673,14 +673,6 @@
 <td><b>Type</b></td>
 <td><b>Optional</b></td></tr>
 <tr class="a">
-<td>log4j</td>
-<td>log4j</td>
-<td>1.2.17</td>
-<td>provided</td>
-<td></td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="b">
 <td>org.apache.curator</td>
 <td>curator-framework</td>
 <td>5.2.0</td>
@@ -688,7 +680,7 @@
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td>org.apache.httpcomponents</td>
 <td>httpclient</td>
 <td>4.5.13</td>
@@ -696,7 +688,7 @@
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td>org.codehaus.jettison</td>
 <td>jettison</td>
 <td>1.5.4</td>
@@ -704,7 +696,7 @@
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td>commons-io</td>
 <td>commons-io</td>
 <td>2.14.0</td>
@@ -712,7 +704,7 @@
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td>com.sun.jersey</td>
 <td>jersey-server</td>
 <td>1.19.4</td>
@@ -720,7 +712,7 @@
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td>org.apache.curator</td>
 <td>curator-client</td>
 <td>5.2.0</td>
@@ -728,11 +720,19 @@
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td>org.apache.zookeeper</td>
 <td>zookeeper</td>
 <td>3.8.3</td>
 <td>provided</td>
+<td></td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="b">
+<td>org.slf4j</td>
+<td>slf4j-api</td>
+<td>1.7.36</td>
+<td>compile</td>
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
@@ -849,10 +849,10 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="a">
-<td>org.slf4j</td>
-<td>slf4j-api</td>
-<td>1.7.30</td>
-<td>compile</td>
+<td>ch.qos.reload4j</td>
+<td>reload4j</td>
+<td>1.2.22</td>
+<td>provided</td>
 <td></td>
 <td>jar</td>
 <td>false</td></tr>
@@ -884,8 +884,8 @@
 <td>false</td></tr>
 <tr class="a">
 <td>org.slf4j</td>
-<td>slf4j-log4j12</td>
-<td>1.7.30</td>
+<td>slf4j-reload4j</td>
+<td>1.7.36</td>
 <td>provided</td>
 <td></td>
 <td>jar</td>
