@@ -739,14 +739,13 @@
 </ol>
 <p>If the wrong endpoint is used, the request will fail. This may be reported as a 301/redirect error, or as a 400 Bad Request: take these as cues to check the endpoint setting of a bucket.</p>
 <p>The up to date list of regions is <a class="externalLink" href="https://docs.aws.amazon.com/general/latest/gr/s3.html">Available online</a>.</p>
-<p>This list can be used to specify the endpoint of individual buckets, for example for buckets in the central and EU/Ireland endpoints.</p>
+<p>This list can be used to specify the endpoint of individual buckets, for example for buckets in the us-west-2 and EU/Ireland endpoints.</p>
 
 <div class="source">
 <div class="source">
 <pre>&lt;property&gt;
-  &lt;name&gt;fs.s3a.bucket.landsat-pds.endpoint.region&lt;/name&gt;
+  &lt;name&gt;fs.s3a.bucket.us-west-2-dataset.endpoint.region&lt;/name&gt;
   &lt;value&gt;us-west-2&lt;/value&gt;
-  &lt;description&gt;The region for s3a://landsat-pds URLs&lt;/description&gt;
 &lt;/property&gt;
 
 &lt;property&gt;
@@ -803,9 +802,9 @@
 <div class="source">
 <div class="source">
 <pre>&lt;property&gt;
-  &lt;name&gt;fs.s3a.bucket.landsat-pds.endpoint.fips&lt;/name&gt;
+  &lt;name&gt;fs.s3a.bucket.noaa-isd-pds.endpoint.fips&lt;/name&gt;
   &lt;value&gt;true&lt;/value&gt;
-  &lt;description&gt;Use the FIPS endpoint for the landsat dataset&lt;/description&gt;
+  &lt;description&gt;Use the FIPS endpoint for the NOAA dataset&lt;/description&gt;
 &lt;/property&gt;
 </pre></div></div>
 

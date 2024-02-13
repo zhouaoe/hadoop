@@ -1016,15 +1016,14 @@ header.x-amz-version-id=&quot;KcDOVmznIagWx3gP1HlDqcZvm1mFWZ2a&quot;
 
 <div class="source">
 <div class="source">
-<pre>bin/hadoop fs -getfattr -d s3a://landsat-pds/scene_list.gz
+<pre> bin/hadoop fs -getfattr -d s3a://noaa-cors-pds/raw/2024/001/akse/AKSE001x.24_.gz
 
-# file: s3a://landsat-pds/scene_list.gz
-header.Content-Length=&quot;45603307&quot;
-header.Content-Type=&quot;application/octet-stream&quot;
-header.ETag=&quot;39c34d489777a595b36d0af5726007db&quot;
-header.Last-Modified=&quot;Wed Aug 29 01:45:15 BST 2018&quot;
-header.x-amz-storage-class=&quot;INTELLIGENT_TIERING&quot;
-header.x-amz-version-id=&quot;null&quot;
+# file: s3a://noaa-cors-pds/raw/2024/001/akse/AKSE001x.24_.gz
+header.Content-Length=&quot;524671&quot;
+header.Content-Type=&quot;binary/octet-stream&quot;
+header.ETag=&quot;&quot;3e39531220fbd3747d32cf93a79a7a0c&quot;&quot;
+header.Last-Modified=&quot;Tue Jan 02 00:15:13 GMT 2024&quot;
+header.x-amz-server-side-encryption=&quot;AES256&quot;
 </pre></div></div>
 </section><section>
 <h3><a name="Use_rename.28.29_to_encrypt_files_with_new_keys"></a><a name="changing-encryption"></a> Use <code>rename()</code> to encrypt files with new keys</h3>

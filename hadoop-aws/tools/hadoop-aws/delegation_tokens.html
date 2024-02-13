@@ -879,8 +879,8 @@
 
 <div class="source">
 <div class="source">
-<pre># Fetch a token for the AWS landsat-pds bucket and save it to tokens.bin
-$ hdfs fetchdt --webservice s3a://landsat-pds/  tokens.bin
+<pre># Fetch a token for the AWS noaa-isd-pds bucket and save it to tokens.bin
+$ hdfs fetchdt --webservice s3a://noaa-isd-pds/ tokens.bin
 </pre></div></div>
 
 <p>If the command fails with <code>ERROR: Failed to fetch token</code> it means the filesystem does not have delegation tokens enabled.</p>
@@ -891,11 +891,11 @@ $ hdfs fetchdt --webservice s3a://landsat-pds/  tokens.bin
 <div class="source">
 <pre>$ bin/hdfs fetchdt --print tokens.bin
 
-Token (S3ATokenIdentifier{S3ADelegationToken/Session; uri=s3a://landsat-pds;
+Token (S3ATokenIdentifier{S3ADelegationToken/Session; uri=s3a://noaa-isd-pds;
 timestamp=1541683947569; encryption=EncryptionSecrets{encryptionMethod=SSE_S3};
 Created on vm1.local/192.168.99.1 at time 2018-11-08T13:32:26.381Z.};
 Session credentials for user AAABWL expires Thu Nov 08 14:02:27 GMT 2018; (valid))
-for s3a://landsat-pds
+for s3a://noaa-isd-pds
 </pre></div></div>
 
 <p>The &#x201c;(valid)&#x201d; annotation means that the AWS credentials are considered &#x201c;valid&#x201d;: there is both a username and a secret.</p>
@@ -903,11 +903,11 @@ for s3a://landsat-pds
 
 <div class="source">
 <div class="source">
-<pre>$ hadoop s3guard bucket-info s3a://landsat-pds/
+<pre>$ hadoop s3guard bucket-info s3a://noaa-isd-pds/
 
-Filesystem s3a://landsat-pds
+Filesystem s3a://noaa-isd-pds
 Location: us-west-2
-Filesystem s3a://landsat-pds is not using S3Guard
+Filesystem s3a://noaa-isd-pds is not using S3Guard
 The &quot;magic&quot; committer is not supported
 
 S3A Client

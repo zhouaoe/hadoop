@@ -592,7 +592,7 @@
 <p>When the filesystem is asked for a delegation token, the DT binding will generate a token identifier containing the marshalled tokens.</p>
 <p>If the Filesystem was deployed with a DT, that is, it was deployed &#x201c;bonded&#x201d;, that existing DT is returned.</p>
 <p>If it was deployed unbonded, the DT Binding is asked to create a new DT.</p>
-<p>It is up to the binding what it includes in the token identifier, and how it obtains them. This new token identifier is included in a token which has a &#x201c;canonical service name&#x201d; of the URI of the filesystem (e.g &#x201c;<a class="externalLink" href="s3a://landsat-pds">s3a://landsat-pds</a>&#x201d;).</p>
+<p>It is up to the binding what it includes in the token identifier, and how it obtains them. This new token identifier is included in a token which has a &#x201c;canonical service name&#x201d; of the URI of the filesystem (e.g &#x201c;<a class="externalLink" href="s3a://noaa-isd-pds">s3a://noaa-isd-pds</a>&#x201d;).</p>
 <p>The issued/reissued token identifier can be marshalled and reused.</p><section>
 <h3><a name="class_org.apache.hadoop.fs.s3a.auth.delegation.S3ADelegationTokens"></a>class <code>org.apache.hadoop.fs.s3a.auth.delegation.S3ADelegationTokens</code></h3>
 <p>This joins up the S3A Filesystem with the pluggable DT binding classes.</p>

@@ -963,7 +963,7 @@ aws_security_token = ...
 <div class="source">
 <pre>hadoop fs -ls \
  -D fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider \
- s3a://landsat-pds/
+ s3a://noaa-isd-pds/
 </pre></div></div>
 
 <ol style="list-style-type: decimal">
@@ -1920,12 +1920,12 @@ The switch to turn S3A auditing on or off.
 &lt;/property&gt;
 </pre></div></div>
 
-<p>Finally, the public <code>s3a://landsat-pds/</code> bucket can be accessed anonymously:</p>
+<p>Finally, the public <code>s3a://noaa-isd-pds/</code> bucket can be accessed anonymously:</p>
 
 <div class="source">
 <div class="source">
 <pre>&lt;property&gt;
-  &lt;name&gt;fs.s3a.bucket.landsat-pds.aws.credentials.provider&lt;/name&gt;
+  &lt;name&gt;fs.s3a.bucket.noaa-isd-pds.aws.credentials.provider&lt;/name&gt;
   &lt;value&gt;org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider&lt;/value&gt;
 &lt;/property&gt;
 </pre></div></div>
