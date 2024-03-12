@@ -808,7 +808,16 @@
 &lt;/property&gt;
 </pre></div></div>
 
-<p>If this option is <code>true</code>, the endpoint option <code>fs.s3a.endpoint</code> MUST NOT be set:</p>
+<p>If <code>fs.s3a.endpoint.fips</code> is <code>true</code>, the endpoint option <code>fs.s3a.endpoint</code> MUST NOT be set to any non-central endpoint value. If <code>fs.s3a.endpoint.fips</code> is <code>true</code>, the only <i>optionally</i> allowed value for <code>fs.s3a.endpoint</code> is central endpoint <code>s3.amazonaws.com</code>.</p>
+<p>S3A error message if <code>s3.eu-west-2.amazonaws.com</code> endpoint is used with FIPS:</p>
+
+<div class="source">
+<div class="source">
+<pre>Non central endpoint cannot be set when fs.s3a.endpoint.fips is true : https://s3.eu-west-2.amazonaws.com
+</pre></div></div>
+
+<p>S3A validation is used to fail-fast before the SDK returns error.</p>
+<p>AWS SDK error message if S3A does not fail-fast:</p>
 
 <div class="source">
 <div class="source">
@@ -829,6 +838,7 @@ Received an UnknownHostException when attempting to interact with a service.
 
 </pre></div></div>
 
+<p>For more details on endpoint and region settings, please check <a href="connecting.html#s3_endpoint_region_details">S3 endpoint and region settings in detail</a>.</p>
 <p><i>Important</i> OpenSSL and FIPS endpoints</p>
 <p>Linux distributions with an FIPS-compliant SSL library may not be compatible with wildfly. Always use with the JDK SSL implementation unless you are confident that the library is compatible, or wish to experiment with the settings outside of production deployments.</p>
 
