@@ -777,7 +777,17 @@
 <li>The S3A client must be configured to recognize interactions with the magic directories and treat them as a special case.</li>
 </ol>
 <p>Now that <a class="externalLink" href="https://aws.amazon.com/s3/consistency/">Amazon S3 is consistent</a>, the magic directory path rewriting is enabled by default.</p>
-<p>The Magic Committer has not been field tested to the extent of Netflix&#x2019;s committer; consider it the least mature of the committers.</p></section><section>
+<p>The Magic Committer has not been field tested to the extent of Netflix&#x2019;s committer; consider it the least mature of the committers.</p>
+<p>When there are less number of files to be written, The Magic committer has an option to store the commit data in-memory which can speed up the TaskCommit operation as well as save S3 cost. This can be enabled by the following property</p>
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.s3a.committer.magic.track.commits.in.memory.enabled&lt;/name&gt;
+  &lt;value&gt;true&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</section><section>
 <h3><a name="Which_Committer_to_Use.3F"></a>Which Committer to Use?</h3>
 <ol style="list-style-type: decimal">
 
