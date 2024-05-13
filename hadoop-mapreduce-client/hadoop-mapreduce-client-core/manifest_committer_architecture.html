@@ -713,7 +713,9 @@
 <p>This avoids the thread pool lifecycle problems of the S3A Committers.</p></section><section>
 <h4><a name="Scale_issues_similar_to_S3A_HADOOP-16570."></a>Scale issues similar to S3A HADOOP-16570.</h4>
 <p>This was a failure in terasorting where many tasks each generated many files; the full list of files to commit (and the etag of every block) was built up in memory and validated prior to execution.</p>
-<p>The manifest committer assumes that the amount of data being stored in memory is less, because there is no longer the need to store an etag for every block of every file being committed.</p></section><section>
+<p>The manifest committer assumes that the amount of data being stored in memory is less, because there is no longer the need to store an etag for every block of every file being committed.</p>
+<p>This assumption turned out not to hold for some jobs: <a class="externalLink" href="https://issues.apache.org/jira/browse/MAPREDUCE-7435">MAPREDUCE-7435. ManifestCommitter OOM on azure job</a></p>
+<p>The strategy here was to read in all manifests and stream their entries to a local file, as Hadoop Writable objects -hence with lower marshalling overhead than JSON.</p></section><section>
 <h4><a name="Duplicate_creation_of_directories_in_the_dest_dir"></a>Duplicate creation of directories in the dest dir</h4>
 <p>Combine all lists of directories to create and eliminate duplicates.</p></section></section></section><section>
 <h2><a name="Implementation_Architecture"></a>Implementation Architecture</h2>
