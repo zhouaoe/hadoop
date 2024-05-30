@@ -5,7 +5,7 @@
 -->
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <title>Apache Hadoop Azure support &#x2013; Hadoop Azure Support: ABFS  — Azure Data Lake Storage Gen2</title>
+    <title>Apache Hadoop Azure support &#x2013; Hadoop Azure Support: ABFS  - Azure Data Lake Storage Gen2</title>
     <style type="text/css" media="all">
       @import url("./css/maven-base.css");
       @import url("./css/maven-theme.css");
@@ -517,7 +517,7 @@
   See the License for the specific language governing permissions and
   limitations under the License. See accompanying LICENSE file.
 -->
-<h1>Hadoop Azure Support: ABFS  &#x2014; Azure Data Lake Storage Gen2</h1>
+<h1>Hadoop Azure Support: ABFS  - Azure Data Lake Storage Gen2</h1>
 <ul>
 <li><a href="#Introduction"> Introduction</a></li>
 <li><a href="#Features_of_the_ABFS_connector."> Features of the ABFS connector.</a></li>
@@ -542,7 +542,11 @@
 <li><a href="#Azure_Managed_Identity"> Azure Managed Identity</a></li>
 <li><a href="#Custom_OAuth_2.0_Token_Provider">Custom OAuth 2.0 Token Provider</a></li>
 <li><a href="#Delegation_Token_Provider"> Delegation Token Provider</a></li>
-<li><a href="#Shared_Access_Signature_.28SAS.29_Token_Provider">Shared Access Signature (SAS) Token Provider</a></li></ul></li>
+<li><a href="#Shared_Access_Signature_.28SAS.29_Token_Provider">Shared Access Signature (SAS) Token Provider</a>
+<ul>
+<li><a href="#Known_Issues_With_SAS">Known Issues With SAS</a></li>
+<li><a href="#Using_User_Delegation_SAS_with_ABFS">Using User Delegation SAS with ABFS</a></li>
+<li><a href="#Using_Account.2FService_SAS_with_ABFS">Using Account/Service SAS with ABFS</a></li></ul></li></ul></li>
 <li><a href="#Technical_notes"> Technical notes</a>
 <ul>
 <li><a href="#Proxy_setup"> Proxy setup</a></li>
@@ -833,7 +837,9 @@ ls: `abfs://container1@abfswales1.dfs.core.windows.net/': No such file or direct
 <li>Using OAuth 2.0 tokens of one form or another.</li>
 <li>Deployed in-Azure with the Azure VMs providing OAuth 2.0 tokens to the application, &#x201c;Managed Instance&#x201d;.</li>
 <li>Using Shared Access Signature (SAS) tokens provided by a custom implementation of the SASTokenProvider interface.</li>
+<li>By directly configuring a fixed Shared Access Signature (SAS) token in the account configuration settings files.</li>
 </ol>
+<p>Note: SAS Based Authentication should be used only with HNS Enabled accounts.</p>
 <p>What can be changed is what secrets/credentials are used to authenticate the caller.</p>
 <p>The authentication mechanism is set in <code>fs.azure.account.auth.type</code> (or the account specific variant). The possible values are SharedKey, OAuth, Custom and SAS. For the various OAuth options use the config <code>fs.azure.account .oauth.provider.type</code>. Following are the implementations supported ClientCredsTokenProvider, UserPasswordTokenProvider, MsiTokenProvider and RefreshTokenBasedTokenProvider. An IllegalArgumentException is thrown if the specified provider type is not one of the supported.</p>
 <p>All secrets can be stored in JCEKS files. These are encrypted and password protected &#x2014;use them or a compatible Hadoop Key Management Store wherever possible</p><section>
@@ -846,14 +852,14 @@ ls: `abfs://container1@abfswales1.dfs.core.windows.net/': No such file or direct
 <div class="source">
 <div class="source">
 <pre>&lt;property&gt;
-  &lt;name&gt;fs.azure.account.auth.type.abfswales1.dfs.core.windows.net&lt;/name&gt;
+  &lt;name&gt;fs.azure.account.auth.type.ACCOUNT_NAME.dfs.core.windows.net&lt;/name&gt;
   &lt;value&gt;SharedKey&lt;/value&gt;
   &lt;description&gt;
   &lt;/description&gt;
 &lt;/property&gt;
 &lt;property&gt;
-  &lt;name&gt;fs.azure.account.key.abfswales1.dfs.core.windows.net&lt;/name&gt;
-  &lt;value&gt;ZGlkIHlvdSByZWFsbHkgdGhpbmsgSSB3YXMgZ29pbmcgdG8gcHV0IGEga2V5IGluIGhlcmU/IA==&lt;/value&gt;
+  &lt;name&gt;fs.azure.account.key.ACCOUNT_NAME.dfs.core.windows.net&lt;/name&gt;
+  &lt;value&gt;ACCOUNT_KEY&lt;/value&gt;
   &lt;description&gt;
   The secret password. Never share these.
   &lt;/description&gt;
@@ -1075,7 +1081,29 @@ ls: `abfs://container1@abfswales1.dfs.core.windows.net/': No such file or direct
 
 <p>In case delegation token is enabled, and the config <code>fs.azure.delegation.token .provider.type</code> is not provided then an IlleagalArgumentException is thrown.</p></section><section>
 <h3><a name="Shared_Access_Signature_.28SAS.29_Token_Provider"></a>Shared Access Signature (SAS) Token Provider</h3>
-<p>A Shared Access Signature (SAS) token provider supplies the ABFS connector with SAS tokens by implementing the SASTokenProvider interface.</p>
+<p>A shared access signature (SAS) provides secure delegated access to resources in your storage account. With a SAS, you have granular control over how a client can access your data. To know more about how SAS Authentication works refer to <a class="externalLink" href="https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview">Grant limited access to Azure Storage resources using shared access signatures (SAS)</a></p>
+<p>There are three types of SAS supported by Azure Storage: - <a class="externalLink" href="https://learn.microsoft.com/en-us/rest/api/storageservices/create-user-delegation-sas">User Delegation SAS</a>: Recommended for use with ABFS Driver with HNS Enabled ADLS Gen2 accounts. It is Identity based SAS that works at blob/directory level) - <a class="externalLink" href="https://learn.microsoft.com/en-us/rest/api/storageservices/create-service-sas">Service SAS</a>: Global and works at container level. - <a class="externalLink" href="https://learn.microsoft.com/en-us/rest/api/storageservices/create-account-sas">Account SAS</a>: Global and works at account level.</p><section>
+<h4><a name="Known_Issues_With_SAS"></a>Known Issues With SAS</h4>
+<ul>
+
+<li>SAS Based Authentication works only with HNS Enabled ADLS Gen2 Accounts which is a recommended account type to be used with ABFS.</li>
+<li>Certain root level operations are known to fail with SAS Based Authentication.</li>
+</ul></section><section>
+<h4><a name="Using_User_Delegation_SAS_with_ABFS"></a>Using User Delegation SAS with ABFS</h4>
+<ul>
+
+<li>
+
+<p><b>Description</b>: ABFS allows you to implement your custom SAS Token Provider that uses your identity to create a user delegation key which then can be used to create SAS instead of storage account key. The declared class must implement <code>org.apache.hadoop.fs.azurebfs.extensions.SASTokenProvider</code>.</p>
+</li>
+<li>
+
+<p><b>Configuration</b>: To use this method with ABFS Driver, specify the following properties in your <code>core-site.xml</code> file:</p>
+<ol style="list-style-type: decimal">
+
+<li>
+
+<p>Authentication Type:</p>
 
 <div class="source">
 <div class="source">
@@ -1083,13 +1111,120 @@ ls: `abfs://container1@abfswales1.dfs.core.windows.net/': No such file or direct
   &lt;name&gt;fs.azure.account.auth.type&lt;/name&gt;
   &lt;value&gt;SAS&lt;/value&gt;
 &lt;/property&gt;
-&lt;property&gt;
+</pre></div></div>
+</li>
+<li>
+
+<p>Custom SAS Token Provider Class:</p>
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
   &lt;name&gt;fs.azure.sas.token.provider.type&lt;/name&gt;
-  &lt;value&gt;{fully-qualified-class-name-for-implementation-of-SASTokenProvider-interface}&lt;/value&gt;
+  &lt;value&gt;CUSTOM_SAS_TOKEN_PROVIDER_CLASS&lt;/value&gt;
 &lt;/property&gt;
 </pre></div></div>
+</li>
+</ol>
+<p>Replace <code>CUSTOM_SAS_TOKEN_PROVIDER_CLASS</code> with fully qualified class name of your custom token provider implementation. Depending upon the implementation you might need to specify additional configurations that are required by your custom implementation.</p>
+</li>
+<li>
 
-<p>The declared class must implement <code>org.apache.hadoop.fs.azurebfs.extensions.SASTokenProvider</code>.</p></section></section><section>
+<p><b>Example</b>: ABFS Hadoop Driver provides a <a class="externalLink" href="https://github.com/apache/hadoop/blob/trunk/hadoop-tools/hadoop-azure/src/test/java/org/apache/hadoop/fs/azurebfs/extensions/MockDelegationSASTokenProvider.java">MockDelegationSASTokenProvider</a> implementation that can be used as an example on how to implement your own custom SASTokenProvider. This requires the Application credentials to be specifed using the following configurations apart from above two:</p>
+<ol style="list-style-type: decimal">
+
+<li>App Service Principle Tenant Id:
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.azure.test.app.service.principal.tenant.id&lt;/name&gt;
+  &lt;value&gt;TENANT_ID&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</li>
+<li>App Service Principle Object Id:
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.azure.test.app.service.principal.object.id&lt;/name&gt;
+  &lt;value&gt;OBJECT_ID&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</li>
+<li>App Id:
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.azure.test.app.id&lt;/name&gt;
+  &lt;value&gt;APPLICATION_ID&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</li>
+<li>App Secret:
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.azure.test.app.secret&lt;/name&gt;
+  &lt;value&gt;APPLICATION_SECRET&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</li>
+</ol>
+</li>
+<li>
+
+<p><b>Security</b>: More secure than Shared Key and allows granting limited access to data without exposing the access key. Recommended to be used only with HNS Enabled, ADLS Gen 2 storage accounts.</p>
+</li>
+</ul></section><section>
+<h4><a name="Using_Account.2FService_SAS_with_ABFS"></a>Using Account/Service SAS with ABFS</h4>
+<ul>
+
+<li>
+
+<p><b>Description</b>: ABFS allows user to use Account/Service SAS for authenticating requests. User can specify them as fixed SAS Token to be used across all the requests.</p>
+</li>
+<li>
+
+<p><b>Configuration</b>: To use this method with ABFS Driver, specify the following properties in your <code>core-site.xml</code> file:</p>
+<ol style="list-style-type: decimal">
+
+<li>
+
+<p>Authentication Type:</p>
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.azure.account.auth.type&lt;/name&gt;
+  &lt;value&gt;SAS&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</li>
+<li>
+
+<p>Fixed SAS Token:</p>
+
+<div class="source">
+<div class="source">
+<pre>&lt;property&gt;
+  &lt;name&gt;fs.azure.sas.fixed.token&lt;/name&gt;
+  &lt;value&gt;FIXED_SAS_TOKEN&lt;/value&gt;
+&lt;/property&gt;
+</pre></div></div>
+</li>
+</ol>
+<p>Replace <code>FIXED_SAS_TOKEN</code> with fixed Account/Service SAS. You can also generate SAS from Azure portal. Account -&gt; Security + Networking -&gt; Shared Access Signature</p>
+</li>
+<li>
+
+<p><b>Security</b>: Account/Service SAS requires account keys to be used which makes them less secure. There is no scope of having delegated access to different users.</p>
+</li>
+</ul>
+<p><i>Note:</i> When <code>fs.azure.sas.token.provider.type</code> and <code>fs.azure.fixed.sas.token</code> are both configured, precedence will be given to the custom token provider implementation.</p></section></section></section><section>
 <h2><a name="Technical_notes"></a><a name="technical"></a> Technical notes</h2><section>
 <h3><a name="Proxy_setup"></a><a name="proxy"></a> Proxy setup</h3>
 <p>The connector uses the JVM proxy settings to control its proxy setup.</p>
