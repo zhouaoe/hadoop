@@ -30,24 +30,30 @@ import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Random;
 
-@HdfsCompatCaseGroup(name = "File")
-public class HdfsCompatFile extends AbstractHdfsCompatCase {
-  private static final int FILE_LEN = 128;
+@HdfsCompatCaseGroup(name = "TransFile")
+public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
+  private static int FILE_LEN = 0;
   private static final long BLOCK_SIZE = 1048576;
   private static final short REPLICATION = 1;
   private static final Random RANDOM = new Random();
-  private Path file = null;
-  
+  private Path file = new Path("/a/test_1.log");
+
+
+  // private final static String JindoBaseDir = "/a/";
+  // private final static String JindoBaseFile = "/a/test_1.log";
+  // private final static String JindoBaseFile2 = "/a/test_2.log";
+  // private final static String JindoBaseFile3 = "/a/test_3.log"; 
+
+
   @HdfsCompatCasePrepare
   public void prepare() throws IOException {
-    this.file = makePath("file");
-    HdfsCompatUtil.createFile(fs(), this.file, true,
-        1024, FILE_LEN, BLOCK_SIZE, REPLICATION);
+    FILE_LEN = (int)fs().getLength(file);
+    System.out.println("HdfsCompatTransFile prepare done");
   }
 
   @HdfsCompatCaseCleanup
   public void cleanup() throws IOException {
-    HdfsCompatUtil.deleteQuietly(fs(), this.file, true);
+      System.out.println("HdfsCompatTransFile cleanup done");
   }
 
   @HdfsCompatCase
@@ -83,28 +89,9 @@ public class HdfsCompatFile extends AbstractHdfsCompatCase {
     fs().rename(file, dst);
     Assert.assertFalse(fs().exists(file));
     Assert.assertTrue(fs().exists(dst));
-  }
 
-  @HdfsCompatCase
-  public void deleteFile() throws IOException {
-    fs().delete(file, true);
-    Assert.assertFalse(fs().exists(file));
-  }
-
-  @HdfsCompatCase
-  public void deleteOnExit() throws IOException {
-    FileSystem newFs = FileSystem.newInstance(fs().getUri(), fs().getConf());
-    newFs.deleteOnExit(file);
-    newFs.close();
-    Assert.assertFalse(fs().exists(file));
-  }
-
-  @HdfsCompatCase
-  public void cancelDeleteOnExit() throws IOException {
-    FileSystem newFs = FileSystem.newInstance(fs().getUri(), fs().getConf());
-    newFs.deleteOnExit(file);
-    newFs.cancelDeleteOnExit(file);
-    newFs.close();
+    fs().rename(dst, file);
+    Assert.assertFalse(fs().exists(dst));
     Assert.assertTrue(fs().exists(file));
   }
 
@@ -151,11 +138,9 @@ public class HdfsCompatFile extends AbstractHdfsCompatCase {
   public void concat() throws IOException {
     final Path dir = makePath("dir");
     try {
-      final Path src = new Path(dir, "src");
       final Path dst = new Path(dir, "dst");
-      HdfsCompatUtil.createFile(fs(), src, 64);
       HdfsCompatUtil.createFile(fs(), dst, 16);
-      fs().concat(dst, new Path[]{src});
+      fs().concat(dst, new Path[]{file});
       FileStatus fileStatus = fs().getFileStatus(dst);
       Assert.assertEquals(16 + 64, fileStatus.getLen());
     } finally {
@@ -237,5 +222,14 @@ public class HdfsCompatFile extends AbstractHdfsCompatCase {
       Assert.fail("Should not have write permission");
     } catch (Throwable ignored) {
     }
+  }
+
+
+  @HdfsCompatCase
+  public void appendFile() throws IOException {
+    FSDataOutputStream stream = fs().append(file);
+    stream.write("testAppend".getBytes());
+    stream.close();
+    Assert.assertEquals((int)fs().getLength(file), FILE_LEN + 10);
   }
 }
