@@ -106,22 +106,23 @@ public class HdfsCompatTransStoragePolicy extends AbstractHdfsCompatCase {
   }
 
   @HdfsCompatCase
-  public void unsetStoragePolicy() throws IOException {
+  public void unsetStoragePolicy() throws IOException,InterruptedException {
     System.out.println("unsetStoragePolicy sleep 180s this.dir="+this.dir);
     Thread.sleep(180*1000);
-
     fs().unsetStoragePolicy(dir);
     BlockStoragePolicySpi policy = fs().getStoragePolicy(dir);
     String policyNameAfterUnset = (policy == null) ? null : policy.getName();
     System.out.println("unsetStoragePolicy policyNameAfterUnset="+policyNameAfterUnset);
     System.out.println("unsetStoragePolicy defaultPolicyName=null");
     Assert.assertEquals(null, policyNameAfterUnset);
+    Thread.sleep(180*1000);
+
   }
 
 
   @HdfsCompatCase(ifDef = "org.apache.hadoop.fs.FileSystem#satisfyStoragePolicy")
   public void satisfyStoragePolicy() throws IOException {
-    sub_dir = new Path(getBasePath(),"/a/sub_a");
+    Path sub_dir = new Path(getBasePath(),"/a/sub_a");
     fs().satisfyStoragePolicy(sub_dir);
   }
 }

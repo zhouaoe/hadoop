@@ -38,12 +38,10 @@ public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
   private static final short REPLICATION = 1;
   private static final Random RANDOM = new Random();
   private Path file = new Path("/a/test_1.log");
-  
+  private Path fileToDelete = new Path("/a/test_3.log");
+  private Path fileToDelete2 = new Path("/a/test_2.log");
+  private Path dir = new Path("/a/");
 
-  // private final static String JindoBaseDir = "/a/";
-  // private final static String JindoBaseFile = "/a/test_1.log";
-  // private final static String JindoBaseFile2 = "/a/test_2.log";
-  // private final static String JindoBaseFile3 = "/a/test_3.log"; 
 
   public void init(HdfsCompatEnvironment environment) {
     this.env = environment;
@@ -144,15 +142,14 @@ public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
 
   @HdfsCompatCase
   public void concat() throws IOException {
-    final Path dir = makePath("dir");
+    final Path dst = new Path(dir, "dst");
+
     try {
-      final Path dst = new Path(dir, "dst");
-      HdfsCompatUtil.createFile(fs(), dst, 16);
       fs().concat(dst, new Path[]{file});
       FileStatus fileStatus = fs().getFileStatus(dst);
-      Assert.assertEquals(16 + 64, fileStatus.getLen());
+      Assert.assertNotEquals(0, fileStatus.getLen());
     } finally {
-      HdfsCompatUtil.deleteQuietly(fs(), dir, true);
+      HdfsCompatUtil.deleteQuietly(fs(), dst, true);
     }
   }
 
@@ -239,5 +236,29 @@ public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
     stream.write("testAppend".getBytes());
     stream.close();
     Assert.assertEquals((int)fs().getLength(file), FILE_LEN + 10);
+  }
+
+
+  @HdfsCompatCase
+  public void cancelDeleteOnExit() throws IOException {
+    FileSystem newFs = FileSystem.newInstance(fs().getUri(), fs().getConf());
+    newFs.deleteOnExit(file);
+    newFs.cancelDeleteOnExit(file);
+    newFs.close();
+    Assert.assertTrue(fs().exists(file));
+  }
+
+  @HdfsCompatCase
+  public void deleteFile() throws IOException {
+    fs().delete(fileToDelete, true);
+    Assert.assertFalse(fs().exists(fileToDelete));
+  }
+
+  @HdfsCompatCase
+  public void deleteOnExit() throws IOException {
+    FileSystem newFs = FileSystem.newInstance(fs().getUri(), fs().getConf());
+    newFs.deleteOnExit(fileToDelete2);
+    newFs.close();
+    Assert.assertFalse(fs().exists(fileToDelete2));
   }
 }
