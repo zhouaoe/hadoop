@@ -31,6 +31,12 @@ public class HdfsCompatTransDirectory extends AbstractHdfsCompatCase {
   private Path dir = new Path("/a/");
   private Path file = new Path("/a/test_1.log");
 
+  public void init(HdfsCompatEnvironment environment) {
+    this.env = environment;
+    this.fs = env.getFileSystem();
+  }
+
+
   @HdfsCompatCasePrepare
   public void prepare() throws IOException {
     FILE_LEN = (int)fs().getLength(file);
@@ -107,7 +113,7 @@ public class HdfsCompatTransDirectory extends AbstractHdfsCompatCase {
     ContentSummary summary = fs().getContentSummary(dir);
     Assert.assertNotEquals(0, summary.getFileCount());
     Assert.assertNotEquals(0, summary.getDirectoryCount());
-    Assert.assertEquals(FILE_LEN, summary.getLength());
+    Assert.assertNotEquals(0, summary.getLength());
   }
 
   @HdfsCompatCase

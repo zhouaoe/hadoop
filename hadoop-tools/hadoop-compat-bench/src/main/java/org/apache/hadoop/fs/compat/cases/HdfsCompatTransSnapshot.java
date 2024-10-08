@@ -33,10 +33,16 @@ public class HdfsCompatTransSnapshot extends AbstractHdfsCompatCase {
   private final String snapshotName = "s-name";
   private final String fileName = "test_1.log";
   private Path base;
-  private Path dir=new Path("/a");;
+  private Path dir;
   private Path snapshot;
   private Method allow;
   private Method disallow;
+
+  public void init(HdfsCompatEnvironment environment) {
+    this.env = environment;
+    this.fs = env.getFileSystem();
+  }
+
 
   private static Path getSnapshotPath(Path path, String snapshotName) {
     return new Path(path, ".snapshot/" + snapshotName);
@@ -45,8 +51,8 @@ public class HdfsCompatTransSnapshot extends AbstractHdfsCompatCase {
   @HdfsCompatCaseSetUp
   public void setUp() throws Exception {
     try {
-      base=new Path(getBasePath(),"/a");
-      dir=new Path(getBasePath(),"/a");
+      base=new Path(getBasePath(),"/c");
+      dir=new Path(getBasePath(),"/c");
 
       // this.base = getUniquePath();
       // fs().mkdirs(this.base);
@@ -54,10 +60,9 @@ public class HdfsCompatTransSnapshot extends AbstractHdfsCompatCase {
       Method allowSnapshotMethod = fs().getClass()
           .getMethod("allowSnapshot", Path.class);
       allowSnapshotMethod.setAccessible(true);
-      System.out.println("this.getBasePath "+getBasePath());
 
       
-      System.out.println("this.base "+this.base);
+      System.out.println("getSnapshotPath setUp this.base "+this.base);
       allowSnapshotMethod.invoke(fs(), this.base);
       this.allow = allowSnapshotMethod;
 

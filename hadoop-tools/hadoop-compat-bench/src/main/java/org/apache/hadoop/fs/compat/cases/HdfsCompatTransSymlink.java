@@ -31,6 +31,12 @@ public class HdfsCompatTransSymlink extends AbstractHdfsCompatCase {
   private Path target = new Path("/a/test_1.log");
   private Path link = null;
 
+  public void init(HdfsCompatEnvironment environment) {
+    this.env = environment;
+    this.fs = env.getFileSystem();
+  }
+
+
   @HdfsCompatCaseSetUp
   public void setUp() {
     FileSystem.enableSymlinks();

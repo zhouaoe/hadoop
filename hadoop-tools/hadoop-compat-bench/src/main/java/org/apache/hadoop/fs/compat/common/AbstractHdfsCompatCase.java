@@ -27,9 +27,9 @@ import java.util.Random;
 public abstract class AbstractHdfsCompatCase {
   private static final Random RANDOM = new Random();
 
-  private FileSystem fs;
-  private HdfsCompatEnvironment env;
-  private Path localPath;
+  protected FileSystem fs;
+  protected HdfsCompatEnvironment env;
+  protected Path localPath;
 
   public AbstractHdfsCompatCase() {
   }

@@ -30,6 +30,11 @@ import java.util.Map;
 @HdfsCompatCaseGroup(name = "TransXAttr")
 public class HdfsCompatTransXAttr extends AbstractHdfsCompatCase {
   private Path file = new Path("/a/test_1.log");
+  public void init(HdfsCompatEnvironment environment) {
+    this.env = environment;
+    this.fs = env.getFileSystem();
+  }
+
 
   @HdfsCompatCasePrepare
   public void prepare() throws IOException {

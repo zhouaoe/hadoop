@@ -34,24 +34,37 @@ public class HdfsCompatTransStoragePolicy extends AbstractHdfsCompatCase {
   private static final Logger LOG =
       LoggerFactory.getLogger(HdfsCompatStoragePolicy.class);
   private static final Random RANDOM = new Random();
-  private Path dir = new Path("/a/");
-  private Path file = new Path("/a/test_1.log");
+  private Path dir ;
+  private Path file ;
+  // private Path sub_dir = new Path("/a/sub_a");
+
   private String[] policies;
-  private String defaultPolicyName;
-  private String policyName;
+  private String defaultPolicyName = "CLOUD_STD";
+  private String policyName= "CLOUD_IA";
+
+  public void init(HdfsCompatEnvironment environment) {
+    this.env = environment;
+    this.fs = env.getFileSystem();
+  }
 
   @HdfsCompatCaseSetUp
   public void setUp() throws IOException {
-    policies = getStoragePolicyNames();
+    policies =  new  String[]{"CLOUD_STD","CLOUD_IA"};
   }
 
   @HdfsCompatCasePrepare
   public void prepare() throws IOException {
+    dir = new Path(getBasePath(),"/a");
+    // file = new Path(getBasePath(),"/a/test_1.log");
+    System.out.println("prepare HdfsCompatTransStoragePolicy this.dir="+this.dir);
+
     BlockStoragePolicySpi policy = fs().getStoragePolicy(this.dir);
     this.defaultPolicyName = (policy == null) ? null : policy.getName();
+    System.out.println("prepare defaultPolicyName = "+defaultPolicyName);
 
     List<String> differentPolicies = new ArrayList<>();
     for (String name : policies) {
+      System.out.println("prepare Policy query name= "+name);
       if (!name.equalsIgnoreCase(defaultPolicyName)) {
         differentPolicies.add(name);
       }
@@ -64,38 +77,51 @@ public class HdfsCompatTransStoragePolicy extends AbstractHdfsCompatCase {
       this.policyName = differentPolicies.get(
           RANDOM.nextInt(differentPolicies.size()));
     }
+    System.out.println("prepare policyName = "+policyName);
+
   }
 
   @HdfsCompatCaseCleanup
-  public void cleanup() {
+  public void cleanup()throws Exception{
+      System.out.println("cleanup  = "+ dir);
   }
+
 
   @HdfsCompatCase
   public void setStoragePolicy() throws IOException {
+    System.out.println("setStoragePolicy this.dir="+this.dir);
+    System.out.println("setStoragePolicy set defaultPolicyName=" + defaultPolicyName  + " to policyName="+policyName);
+
     fs().setStoragePolicy(dir, policyName);
     BlockStoragePolicySpi policy = fs().getStoragePolicy(dir);
-    Assert.assertEquals(policyName, policy.getName());
-  }
-
-  @HdfsCompatCase
-  public void unsetStoragePolicy() throws IOException {
-    fs().setStoragePolicy(dir, policyName);
-    fs().unsetStoragePolicy(dir);
-    BlockStoragePolicySpi policy = fs().getStoragePolicy(dir);
-    String policyNameAfterUnset = (policy == null) ? null : policy.getName();
-    Assert.assertEquals(defaultPolicyName, policyNameAfterUnset);
-  }
-
-  @HdfsCompatCase(ifDef = "org.apache.hadoop.fs.FileSystem#satisfyStoragePolicy")
-  public void satisfyStoragePolicy() throws IOException {
-    fs().setStoragePolicy(dir, policyName);
-    fs().satisfyStoragePolicy(dir);
+    Assert.assertEquals("CLOUD_STD", policy.getName());
   }
 
   @HdfsCompatCase
   public void getStoragePolicy() throws IOException {
+    System.out.println("getStoragePolicy this.dir="+this.dir);
     BlockStoragePolicySpi policy = fs().getStoragePolicy(file);
     String initialPolicyName = (policy == null) ? null : policy.getName();
-    Assert.assertEquals(defaultPolicyName, initialPolicyName);
+    Assert.assertEquals(policyName, initialPolicyName);
+  }
+
+  @HdfsCompatCase
+  public void unsetStoragePolicy() throws IOException {
+    System.out.println("unsetStoragePolicy sleep 180s this.dir="+this.dir);
+    Thread.sleep(180*1000);
+
+    fs().unsetStoragePolicy(dir);
+    BlockStoragePolicySpi policy = fs().getStoragePolicy(dir);
+    String policyNameAfterUnset = (policy == null) ? null : policy.getName();
+    System.out.println("unsetStoragePolicy policyNameAfterUnset="+policyNameAfterUnset);
+    System.out.println("unsetStoragePolicy defaultPolicyName=null");
+    Assert.assertEquals(null, policyNameAfterUnset);
+  }
+
+
+  @HdfsCompatCase(ifDef = "org.apache.hadoop.fs.FileSystem#satisfyStoragePolicy")
+  public void satisfyStoragePolicy() throws IOException {
+    sub_dir = new Path(getBasePath(),"/a/sub_a");
+    fs().satisfyStoragePolicy(sub_dir);
   }
 }

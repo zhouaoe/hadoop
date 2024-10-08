@@ -33,16 +33,22 @@ import java.util.Random;
 @HdfsCompatCaseGroup(name = "TransFile")
 public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
   private static int FILE_LEN = 0;
+
   private static final long BLOCK_SIZE = 1048576;
   private static final short REPLICATION = 1;
   private static final Random RANDOM = new Random();
   private Path file = new Path("/a/test_1.log");
-
+  
 
   // private final static String JindoBaseDir = "/a/";
   // private final static String JindoBaseFile = "/a/test_1.log";
   // private final static String JindoBaseFile2 = "/a/test_2.log";
   // private final static String JindoBaseFile3 = "/a/test_3.log"; 
+
+  public void init(HdfsCompatEnvironment environment) {
+    this.env = environment;
+    this.fs = env.getFileSystem();
+  }
 
 
   @HdfsCompatCasePrepare
@@ -109,6 +115,7 @@ public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
 
   @HdfsCompatCase
   public void setOwner() throws Exception {
+    fs().setOwner(file,"root","root");
     final String owner = "test_" + RANDOM.nextInt(1024);
     final String group = "test_" + RANDOM.nextInt(1024);
     final String privileged = getPrivilegedUser();
@@ -122,6 +129,7 @@ public class HdfsCompatTransFile extends AbstractHdfsCompatCase {
     FileStatus fileStatus = fs().getFileStatus(file);
     Assert.assertEquals(owner, fileStatus.getOwner());
     Assert.assertEquals(group, fileStatus.getGroup());
+    fs().setOwner(file,"root","root");
   }
 
   @HdfsCompatCase

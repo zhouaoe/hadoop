@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.compat.suites.HdfsCompatSuiteForAll;
 import org.apache.hadoop.fs.compat.suites.HdfsCompatSuiteForShell;
 import org.apache.hadoop.fs.compat.suites.HdfsCompatSuiteForTpcds;
 import org.apache.hadoop.fs.compat.suites.HdfsCompatSuiteForTrans;
+import org.apache.hadoop.fs.compat.suites.HdfsCompatSuiteForOriginTrans;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -125,6 +126,8 @@ public class HdfsCompatCommand {
     defaultSuites.put("shell", new HdfsCompatSuiteForShell());
     defaultSuites.put("tpcds", new HdfsCompatSuiteForTpcds());
     defaultSuites.put("trans", new HdfsCompatSuiteForTrans());
+    defaultSuites.put("origin", new HdfsCompatSuiteForOriginTrans());
+
     return defaultSuites;
   }
 }
