@@ -210,5 +210,15 @@ public final class Constants {
 
   public static final String LIST_VERSION = "fs.oss.list.version";
 
+  /**
+   * new methods to reduce QPS
+   */
+  public static final String FS_OSS_FS_REDUCE_QPS = "fs.oss.fs.reduce.qps";
+  /**
+   * new methods to reduce QPS : {@value}.
+   */
+  public static final boolean FS_OSS_FS_REDUCE_QPS_DEFALUT_VALUE = true;
+
   public static final int DEFAULT_LIST_VERSION = 2;
+  
 }

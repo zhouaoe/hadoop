@@ -24,6 +24,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +53,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.BlockingThreadPoolExecutorService;
 import org.apache.hadoop.util.Progressable;
 
+import com.aliyun.oss.OSSErrorCode;
+import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.OSSObjectSummary;
 import com.aliyun.oss.model.ObjectMetadata;
 
@@ -61,6 +64,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.intOption;
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.longOption;
+import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.maybeAddTrailingSlash;
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.objectRepresentsDirectory;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
 import static org.apache.hadoop.fs.impl.PathCapabilitiesSupport.validatePathCapabilityArgs;
@@ -111,6 +115,81 @@ public class AliyunOSSFileSystem extends FileSystem {
     }
   }
 
+  private FileStatus innerOssGetFileStatus(final Path path,
+      final Set<AliyunOSSStatusProbeEnum> probes) throws IOException {
+    if (isReduceQps()) {
+      return ossGetFileStatus(path, probes);
+    } else {
+      return getFileStatus(path);
+    }
+  }
+
+  private FileStatus ossGetFileStatus(final Path path,
+      final Set<AliyunOSSStatusProbeEnum> probes) throws IOException {
+    LOG.debug("OssGetFileStatus {}", path);
+    final Path qualifiedPath = path.makeQualified(uri, workingDir);
+    String key = pathToKey(qualifiedPath);
+    LOG.debug("Getting path status for {}  ({});", qualifiedPath, key);
+
+    // Root always exists
+    if (key.length() == 0) {
+      return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
+    }
+
+    if (!key.endsWith("/") && probes.contains(AliyunOSSStatusProbeEnum.Head)) {
+      try {
+        // look for the simple file
+        ObjectMetadata meta = store.getObjectMetadata(key);
+
+        // meta will not be null.if data is not exist,therer will throw exception
+        LOG.debug("Found exact file: normal file {}", key);
+        return new OSSFileStatus(meta.getContentLength(), false, 1, getDefaultBlockSize(path),
+            meta.getLastModified().getTime(), qualifiedPath, username);
+      } catch (OSSException e) {
+        // if file is not exist，continue to do others actions
+        if (e.getErrorCode() != OSSErrorCode.NO_SUCH_KEY) {
+          throw new IOException("getFileStatus " + path, e);
+        }
+      }
+    }
+    // if a DirMarker can be found through a Head operation, it can reduce one list
+    // operation. Head operations are relatively lighter than list operations, so
+    // doing one more Head operation can be beneficial.
+    if (!key.isEmpty() && probes.contains(AliyunOSSStatusProbeEnum.DirMarker)) {
+      try {
+        // look for the DirMarker
+        String dirKey = maybeAddTrailingSlash(key);
+        ObjectMetadata meta = store.getObjectMetadata(key);
+        LOG.debug("Found exact file: DirMarker file {}", dirKey);
+        return new OSSFileStatus(meta.getContentLength(), false, 1, getDefaultBlockSize(path),
+            meta.getLastModified().getTime(), qualifiedPath, username);
+      } catch (OSSException e) {
+        // if file is not exist，continue to do others actions
+        if (e.getErrorCode() != OSSErrorCode.NO_SUCH_KEY) {
+          throw new IOException("getFileStatus DirMarker " + path, e);
+        }
+      }
+    }
+
+    // execute the list
+    if (probes.contains(AliyunOSSStatusProbeEnum.List)) {
+      String dirKey = maybeAddTrailingSlash(key);
+      // list size is dir marker + at least one entry
+      final int listSize = 2;
+      OSSListRequest listRequest = store.createListObjectsRequest(key,
+          listSize, null, null, false);
+      OSSListResult listResult = store.listObjects(listRequest);
+      if (CollectionUtils.isNotEmpty(listResult.getObjectSummaries()) ||
+          CollectionUtils.isNotEmpty(listResult.getCommonPrefixes())) {
+        return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
+      }
+    }
+
+    LOG.debug("Not Found: {}", path);
+    throw new FileNotFoundException("No such file or directory: " + path);
+  }
+
+
   @Override
   public FSDataOutputStream create(Path path, FsPermission permission,
       boolean overwrite, int bufferSize, short replication, long blockSize,
@@ -120,7 +199,9 @@ public class AliyunOSSFileSystem extends FileSystem {
 
     try {
       // get the status or throw a FNFE
-      status = getFileStatus(path);
+      // status = getFileStatus(path);
+      status = innerOssGetFileStatus(path,
+          overwrite ? AliyunOSSStatusProbeEnum.DIRECTORIES : AliyunOSSStatusProbeEnum.ALL);
 
       // if the thread reaches here, there is something at the path
       if (status.isDirectory()) {
@@ -144,7 +225,8 @@ public class AliyunOSSFileSystem extends FileSystem {
             blockFactory,
             blockOutputStreamStatistics,
             new SemaphoredDelegatingExecutor(boundedThreadPool,
-                blockOutputActiveBlocks, true)), statistics);
+                blockOutputActiveBlocks, true)),
+        statistics);
   }
 
   /**
@@ -325,6 +407,10 @@ public class AliyunOSSFileSystem extends FileSystem {
   @Deprecated
   public long getDefaultBlockSize() {
     return getConf().getLong(FS_OSS_BLOCK_SIZE_KEY, FS_OSS_BLOCK_SIZE_DEFAULT);
+  }
+
+  private boolean isReduceQps(){
+    return getConf().getBoolean(FS_OSS_FS_REDUCE_QPS, FS_OSS_FS_REDUCE_QPS_DEFALUT_VALUE);
   }
 
   @Override
