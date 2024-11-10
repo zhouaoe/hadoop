@@ -62,3 +62,8 @@ report.html
 
 
 .mvn
+.cache
+.dotnet
+.gitconfig
+.gnupg
+.vscode-server

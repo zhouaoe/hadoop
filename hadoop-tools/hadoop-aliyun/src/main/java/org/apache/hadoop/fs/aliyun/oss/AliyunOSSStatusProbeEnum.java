@@ -53,7 +53,11 @@ public enum AliyunOSSStatusProbeEnum {
   public static final Set<AliyunOSSStatusProbeEnum> FILE =
       HEAD_ONLY;
 
-  /** look for directories. */
-  public static final Set<AliyunOSSStatusProbeEnum> DIRECTORIES = 
-     EnumSet.of(DirMarker, List);
+  /**
+   * look for directories.
+   *
+   * The cost of list is much higher than Head DirMarker. We try to perform Head
+   * DirMarker checks before listing.
+   */
+  public static final Set<AliyunOSSStatusProbeEnum> DIRECTORIES = EnumSet.of(DirMarker, List);
 }

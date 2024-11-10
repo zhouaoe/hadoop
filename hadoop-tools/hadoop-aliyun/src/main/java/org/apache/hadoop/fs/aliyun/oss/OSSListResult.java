@@ -112,4 +112,10 @@ public final class OSSListResult {
       log.debug("Prefix: {}", prefix);
     }
   }
+
+  public boolean representsEmptyDirectory(final String dirKey) {
+    List<String> keys = getObjectSummaries.stream().map(OSSObjectSummary::key);
+    return keys.size() == 1 && keys.contains(dirKey)
+        && getCommonPrefixes().isEmpty();
+  }
 }
