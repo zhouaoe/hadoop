@@ -55,6 +55,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.VersionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +76,7 @@ import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
-
+import org.apache.hadoop.classification.VisibleForTesting;
 /**
  * Core implementation of Aliyun OSS Filesystem for Hadoop.
  * Provides the bridging logic between Hadoop's abstract filesystem and
@@ -154,7 +155,8 @@ public class AliyunOSSFileSystemStore {
     }
     CredentialsProvider provider =
         AliyunOSSUtils.getCredentialsProvider(uri, conf);
-    ossClient = new OSSClient(endPoint, provider, clientConf);
+    // ossClient = new OSSClient(endPoint, provider, clientConf);
+    ossClient = GenerateOssClient(endPoint, provider, clientConf, conf);
     uploadPartSize = AliyunOSSUtils.getMultipartSizeProperty(conf,
         MULTIPART_UPLOAD_PART_SIZE_KEY, MULTIPART_UPLOAD_PART_SIZE_DEFAULT);
 
@@ -178,6 +180,16 @@ public class AliyunOSSFileSystemStore {
           "version 2", listVersion);
     }
     useListV1 = (listVersion == 1);
+  }
+
+  protected OSSClient GenerateOssClient(String endPoint, CredentialsProvider provider, ClientConfiguration clientConf,
+      Configuration conf) throws IOException {
+    Class<? extends OSSClientFactory> ossClientFactoryClass = conf.getClass(
+        OSS_CLIENT_FACTORY_IMPL, DEFAULT_OSS_CLIENT_FACTORY_IMPL,
+        OSSClientFactory.class);
+    OSSClientFactory clientFactory = ReflectionUtils.newInstance(ossClientFactoryClass, conf);
+    OSSClient ossClient = clientFactory.createOSSClient(endPoint, provider, clientConf);
+    return ossClient;
   }
 
   /**
@@ -771,5 +783,10 @@ public class AliyunOSSFileSystemStore {
         return -1;
       }
     }
+  }
+
+  @VisibleForTesting
+  protected OSSClient getOSSClient() {
+    return ossClient;
   }
 }

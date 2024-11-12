@@ -19,7 +19,7 @@
 
 package org.apache.hadoop.fs.aliyun.oss;
 
-public enum AliyunOSSDirEmptyStatus {
+public enum AliyunOSSDirEmptyFlag {
     EMPTY,  
     NOT_EMPTY,  
     UNKNOWN;  

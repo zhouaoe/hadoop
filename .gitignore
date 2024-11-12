@@ -67,3 +67,5 @@ report.html
 .gitconfig
 .gnupg
 .vscode-server
+.m2/
+.lingma/

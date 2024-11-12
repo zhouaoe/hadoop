@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * API version-independent container for OSS List responses.
@@ -114,7 +115,9 @@ public final class OSSListResult {
   }
 
   public boolean representsEmptyDirectory(final String dirKey) {
-    List<String> keys = getObjectSummaries.stream().map(OSSObjectSummary::key);
+    List<String> keys = getObjectSummaries().stream()
+        .map(OSSObjectSummary::getKey)
+        .collect(Collectors.toList());
     return keys.size() == 1 && keys.contains(dirKey)
         && getCommonPrefixes().isEmpty();
   }

@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.hadoop.fs.CommonPathCapabilities;
 import org.apache.hadoop.fs.aliyun.oss.statistics.BlockOutputStreamStatistics;
 import org.apache.hadoop.fs.aliyun.oss.statistics.impl.OutputStreamStatistics;
@@ -48,9 +47,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathIOException;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.fs.s3a.impl.StatusProbeEnum;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.BlockingThreadPoolExecutorService;
+import org.apache.hadoop.util.Preconditions;
 import org.apache.hadoop.util.Progressable;
 
 import com.aliyun.oss.OSSErrorCode;
@@ -68,14 +67,18 @@ import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.maybeAddTrailingSla
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.objectRepresentsDirectory;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
 import static org.apache.hadoop.fs.impl.PathCapabilitiesSupport.validatePathCapabilityArgs;
-
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.classification.VisibleForTesting;
 /**
  * Implementation of {@link FileSystem} for <a href="https://oss.aliyun.com">
- * Aliyun OSS</a>, used to access OSS blob system in a filesystem style.
+ * Aliyun OSS</a>, used to access OSS in a filesystem style.
  */
-public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
+@InterfaceAudience.Private
+@InterfaceStability.Evolving
+public class AliyunOSSV2FileSystem extends AliyunOSSFileSystem {
   private static final Logger LOG =
-      LoggerFactory.getLogger(AliyunOSSPerformanceFileSystem.class);
+      LoggerFactory.getLogger(AliyunOSSV2FileSystem.class);
   private URI uri;
   private String bucket;
   private String username;
@@ -92,7 +95,7 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
   private ExecutorService boundedCopyThreadPool;
 
 
-  private FileStatus innerOssGetFileStatus(final Path path,
+  private OSSFileStatus innerOssGetFileStatus(final Path path,
       final Set<AliyunOSSStatusProbeEnum> probes,
       final boolean needEmptyDirectoryFlag) throws IOException {
     LOG.debug("OssGetFileStatus {}", path);
@@ -101,7 +104,7 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
     LOG.debug("Getting path status for {}  ({});", qualifiedPath, key);
 
     //Can only determine if it is empty through a list operation
-    Preconditions.checkArgument(needEmptyDirectoryFlag && !probes.contains(List));
+    Preconditions.checkArgument(needEmptyDirectoryFlag && !probes.contains(AliyunOSSStatusProbeEnum.List));
     
     // Root always exists
     if (key.length() == 0) {
@@ -155,7 +158,7 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
           CollectionUtils.isNotEmpty(listResult.getCommonPrefixes())) {
           if(listResult.representsEmptyDirectory(dirKey))
           {
-            return new OSSFileStatus(AliyunOSSDirEmptyStatus::EMPTY,0, 1, 0, 0, qualifiedPath, username);
+            return new OSSFileStatus(AliyunOSSDirEmptyFlag.EMPTY,0, 1, 0, 0, qualifiedPath, username);
           }
         return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
       }
@@ -226,11 +229,11 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
     if (parent != null) {
       return false;
     }
-    FileStatus srcStatus = innerOssGetFileStatus(srcPath, AliyunOSSStatusProbeEnum.ALL);
+    FileStatus srcStatus = innerOssGetFileStatus(srcPath, AliyunOSSStatusProbeEnum.ALL, false);
 
     FileStatus dstStatus;
     try {
-      dstStatus = innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.ALL);
+      dstStatus = innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.ALL, false);
     } catch (FileNotFoundException fnde) {
       dstStatus = null;
     }
@@ -248,17 +251,17 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
         return !srcStatus.isDirectory();
       } else if (dstStatus.isDirectory()) {
         // If dst is a directory
-        dstDirWithsrcPath = new Path(dstPath, srcPath.getName());
+        Path dstDirWithsrcPath = new Path(dstPath, srcPath.getName());
 
         OSSFileStatus dstDirWithsrcPathStatus;
         try {
-          dstDirWithsrcPathStatus = innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
+          dstDirWithsrcPathStatus = innerOssGetFileStatus(dstDirWithsrcPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
         } catch (FileNotFoundException fnde) {
           dstDirWithsrcPathStatus = null;
         }
 
         if (dstDirWithsrcPathStatus != null
-            && dstDirWithsrcPathStatus.getEmptyStatus() == AliyunOSSDirEmptyStatus::EMPTY) {
+            && dstDirWithsrcPathStatus.getEmptyFlag() == AliyunOSSDirEmptyFlag.EMPTY) {
           // If dst exists and not a directory / not empty
           throw new FileAlreadyExistsException(String.format(
               "Failed to rename %s to %s, file already exists or not empty!",
@@ -286,7 +289,7 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
   @Override
   public boolean delete(Path path, boolean recursive) throws IOException {
     try {
-      OssFileStatus ossFileStatus= innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.ALL, true)
+      OSSFileStatus ossFileStatus= innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.ALL, true);
       return innerDelete(ossFileStatus, recursive);
     } catch (FileNotFoundException e) {
       LOG.debug("Couldn't delete {} - does not exist", path);
@@ -296,9 +299,8 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
 
   private boolean ossExists(final Path path, final Set<AliyunOSSStatusProbeEnum> probes)
       throws IOException {
-    String key = pathToKey(path);
     try {
-      innerOssGetFileStatus(path, key, probes, false);
+      innerOssGetFileStatus(path, probes, false);
       return true;
     } catch (FileNotFoundException e) {
       return false;
@@ -315,8 +317,9 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
    * @return  true if delete is successful else false.
    * @throws IOException due to inability to delete a directory or file.
    */
-  private boolean innerDelete(OssFileStatus ossFileStatus, boolean recursive)
+  private boolean innerDelete(OSSFileStatus ossFileStatus, boolean recursive)
       throws IOException {
+    //get qulified path
     Path f = ossFileStatus.getPath();
     String p = f.toUri().getPath();
     FileStatus[] statuses;
@@ -332,7 +335,7 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
     if (ossFileStatus.isDirectory()) {
       if (!recursive) {
         // Check whether it is an empty directory or not
-        if (ossFileStatus.getEmptyStatus() != AliyunOSSDirEmptyStatus::NOT_EMPTY) {
+        if (ossFileStatus.getEmptyFlag() != AliyunOSSDirEmptyFlag.NOT_EMPTY) {
           throw new IOException("Cannot remove directory " + f +
               ": It is not empty!");
         } else {
@@ -355,7 +358,7 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
     String key = pathToKey(f);
     LOG.debug("createFakeDirectoryIfNecessary  new fake directory at f={} key={}", f, key);
 
-    if (StringUtils.isNotEmpty(key) && !OssExists(f, AliyunOSSStatusProbeEnum::DIRECTORIES)) {
+    if (StringUtils.isNotEmpty(key) && !ossExists(f, AliyunOSSStatusProbeEnum.DIRECTORIES)) {
       LOG.debug("Creating new fake directory at {}", f);
       mkdir(pathToKey(f.getParent()));
     }
@@ -363,40 +366,37 @@ public class AliyunOSSPerformanceFileSystem extends AliyunOSSFileSystem {
 
   @Override
   @SuppressWarnings("deprecation")
-  public boolean isDirectory(Path f) throws IOException {
-    final Path path = qualify(f);
-    LOG.debug("isDirectory: qualified path={} path={}", path, f);
+  public boolean isDirectory(Path path) throws IOException {
+    LOG.debug("isDirectory: path={}", path);
 
     try {
-      OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum::DIRECTORIES, false);
+      OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.DIRECTORIES, false);
       return fileStatus.isDirectory();
     } catch (FileNotFoundException e) {
-      LOG.debug("isDirectory: qualified path={} path={}. not found or it is a file", path, f);
+      LOG.debug("isDirectory: path={}. not found or it is a file", path);
       return false; // f does not exist
     }
   }
 
   @Override
   @SuppressWarnings("deprecation")
-  public boolean isFile(Path f) throws IOException {
-    final Path path = qualify(f);
-    LOG.debug("isFile: qualified path={} path={}", path, f);
+  public boolean isFile(Path path) throws IOException {
+    LOG.debug("isFile: path={}", path);
     try {
-      return innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE).isFile();
+      return innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE, false).isFile();
     } catch (FileNotFoundException e) {
       // not found or it is a dir.
-      LOG.debug("isFile: qualified path={} path={}. not found or it is a dir", path, f);
+      LOG.debug("isFile: path={} . not found or it is a dir", path);
       return false;
     }
   }
 
   @Override
-  public FSDataInputStream open(Path f, int bufferSize) throws IOException {
-    final Path path = qualify(f);
+  public FSDataInputStream open(Path path, int bufferSize) throws IOException {
     //if f does not exist, there will throw a FileNotFoundException
     //if f is a file, fileStatus.isDirectory will be false
     //if f is a dir, throw a FileNotFoundException
-    final OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE);
+    final OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE, false);
     if (fileStatus.isDirectory()) {
       throw new FileNotFoundException("Can't open " + path +
           " because it is a directory");

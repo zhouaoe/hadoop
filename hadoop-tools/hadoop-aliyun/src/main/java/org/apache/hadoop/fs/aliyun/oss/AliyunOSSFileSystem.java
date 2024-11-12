@@ -49,7 +49,6 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.PathIOException;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.fs.s3a.impl.StatusProbeEnum;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.BlockingThreadPoolExecutorService;
 import org.apache.hadoop.util.Progressable;
@@ -555,7 +554,7 @@ public class AliyunOSSFileSystem extends FileSystem {
    * @return true if directory is successfully created
    * @throws IOException
    */
-  private boolean mkdir(final String key) throws IOException {
+  protected boolean mkdir(final String key) throws IOException {
     String dirName = key;
     if (StringUtils.isNotEmpty(key)) {
       if (!key.endsWith("/")) {
@@ -699,7 +698,7 @@ public class AliyunOSSFileSystem extends FileSystem {
    * @param dstPath destination path.
    * @return true if file is successfully copied.
    */
-  private boolean copyFile(Path srcPath, long srcLen, Path dstPath) {
+  protected boolean copyFile(Path srcPath, long srcLen, Path dstPath) {
     String srcKey = pathToKey(srcPath);
     String dstKey = pathToKey(dstPath);
     return store.copyFile(srcKey, srcLen, dstKey);
@@ -713,7 +712,7 @@ public class AliyunOSSFileSystem extends FileSystem {
    * @param dstPath destination path.
    * @return true if directory is successfully copied.
    */
-  private boolean copyDirectory(Path srcPath, Path dstPath) throws IOException {
+  protected boolean copyDirectory(Path srcPath, Path dstPath) throws IOException {
     String srcKey = AliyunOSSUtils
         .maybeAddTrailingSlash(pathToKey(srcPath));
     String dstKey = AliyunOSSUtils

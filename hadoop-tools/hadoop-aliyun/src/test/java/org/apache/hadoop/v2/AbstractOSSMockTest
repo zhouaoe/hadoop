@@ -1,0 +1,45 @@
+package org.apache.hadoop.fs.aliyun.oss;
+
+import com.aliyun.oss.OSS;
+import com.aliyun.oss.OSSClientBuilder;
+import com.example.config.Configuration; 
+
+public abstract class AbstractOSSMockTest {
+    protected static final String BUCKET = "mock-bucket-oss";
+
+    protected AliyunOSSFileSystem fs;
+    protected OSSClient ossClient;
+
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
+  
+    @Before
+    public void setup() throws Exception {
+      Configuration conf = createConfiguration();
+      fs = new AliyunOSSV2FileSystem();
+      URI uri = URI.create(FS_OSS + "://" + BUCKET);
+      fs.initialize(uri, conf);
+      ossClient = fs.getStore().getOSSClient();
+    }
+
+    public AbstractOSSMockTest() {
+        this.configuration = createConfiguration();
+        this.ossMockClient = new OSSClientBuilder().build(configuration.getEndpoint(), configuration.getAccessKeyId(), configuration.getAccessKeySecret());
+    }
+
+ 
+    public Configuration createConfiguration() {
+    Configuration conf = new Configuration();
+    conf.setClass(OSS_CLIENT_FACTORY_IMPL, MockOSSClientFactory.class,
+        OSSClientFactory.class);
+
+    return conf;
+    }
+
+    public OSSClient getOSSClient(){
+        return ossClient;
+    }
+}
+
+
+
