@@ -181,7 +181,7 @@ public class AliyunOSSFileSystemStore {
       ossClient.setBucketAcl(bucketName, cannedACL);
       statistics.incrementWriteOps(1);
     }
-    
+
     if (StringUtils.isNotEmpty(region)) {
       ossClient.setRegion(region);
       LOG.debug("ossClient setRegion {}", region);
