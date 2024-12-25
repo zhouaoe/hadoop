@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import com.aliyun.oss.OSSErrorCode;
 
 import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
 import org.apache.hadoop.classification.VisibleForTesting;
@@ -288,6 +289,33 @@ public class AliyunOSSFileSystemStore {
     } catch (OSSException osse) {
       LOG.debug("Exception thrown when get object meta: "
               + key + ", exception: " + osse);
+      return null;
+    }
+  }
+
+    /**
+     * Return metadata of a given object key.
+     * In cases where the QPS is too high, OSS will return a 5xx error. Therefore,
+     * only an explicit 'Not Found' response can be considered as non-existent;
+     * other types of exceptions need to be thrown or retried.
+     * 
+     * @param key object key.
+     * @return return null if key does not exist.
+     */
+  public ObjectMetadata getObjectMetadataV2(String key) {
+    try {
+      GenericRequest request = new GenericRequest(bucketName, key);
+      request.setLogEnabled(false);
+      ObjectMetadata objectMeta = ossClient.getObjectMetadata(request);
+      statistics.incrementReadOps(1);
+      return objectMeta;
+    } catch (OSSException osse) {
+      if (osse.getErrorCode() != OSSErrorCode.NO_SUCH_KEY) {
+        LOG.debug("Exception thrown when get object meta: "
+            + key + ", exception: " + osse);
+        throw osse;
+      }
+      // non-existent
       return null;
     }
   }

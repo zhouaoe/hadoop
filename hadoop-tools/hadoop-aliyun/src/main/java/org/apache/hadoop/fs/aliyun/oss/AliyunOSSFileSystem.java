@@ -76,22 +76,22 @@ import static org.apache.hadoop.fs.impl.PathCapabilitiesSupport.validatePathCapa
 public class AliyunOSSFileSystem extends FileSystem {
   private static final Logger LOG =
       LoggerFactory.getLogger(AliyunOSSFileSystem.class);
-  private URI uri;
-  private String bucket;
-  private String username;
-  private Path workingDir;
-  private OSSDataBlocks.BlockFactory blockFactory;
-  private BlockOutputStreamStatistics blockOutputStreamStatistics;
-  private int uploadPartSize;
-  private int blockOutputActiveBlocks;
-  private AliyunOSSFileSystemStore store;
-  private int maxKeys;
-  private int maxReadAheadPartNumber;
-  private int maxConcurrentCopyTasksPerDir;
-  private ExecutorService boundedThreadPool;
-  private ExecutorService boundedCopyThreadPool;
+  protected URI uri;
+  protected String bucket;
+  protected String username;
+  protected Path workingDir;
+  protected OSSDataBlocks.BlockFactory blockFactory;
+  protected BlockOutputStreamStatistics blockOutputStreamStatistics;
+  protected int uploadPartSize;
+  protected int blockOutputActiveBlocks;
+  protected AliyunOSSFileSystemStore store;
+  protected int maxKeys;
+  protected int maxReadAheadPartNumber;
+  protected int maxConcurrentCopyTasksPerDir;
+  protected ExecutorService boundedThreadPool;
+  protected ExecutorService boundedCopyThreadPool;
 
-  private static final PathFilter DEFAULT_FILTER = new PathFilter() {
+  protected static final PathFilter DEFAULT_FILTER = new PathFilter() {
     @Override
     public boolean accept(Path file) {
       return true;
