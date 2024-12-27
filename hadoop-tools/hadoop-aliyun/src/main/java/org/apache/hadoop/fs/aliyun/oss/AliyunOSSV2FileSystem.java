@@ -158,8 +158,8 @@ public class AliyunOSSV2FileSystem extends AliyunOSSFileSystem {
           listResult.getCommonPrefixes().addAll(tempListResult.getCommonPrefixes());
           LOG.debug("continue List  getListResultNum {} isTruncated {}", getListResultNum(listResult), isTruncated);
         }
-        
-        if (getListResultNum(listResult) > 1) {
+
+        if (getListResultNum(listResult) > 0) {
           if (needEmptyDirectoryFlag && listResult.representsEmptyDirectory(dirKey)) {
             LOG.debug("Found a directory: {}", dirKey);
             return new OSSFileStatus(AliyunOSSDirEmptyFlag.EMPTY, 0, 1, 0, 0, qualifiedPath, username);
