@@ -26,7 +26,7 @@ import javax.security.auth.login.Configuration;
 
 import java.util.Date;
 
-import org.apache.hadoop.fs.aliyun.oss.AliyunOSSV2FileSystem;
+import org.apache.hadoop.fs.aliyun.oss.AliyunOSSFileSystem;
 import org.apache.hadoop.fs.aliyun.oss.OSS;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.util.Progressable;

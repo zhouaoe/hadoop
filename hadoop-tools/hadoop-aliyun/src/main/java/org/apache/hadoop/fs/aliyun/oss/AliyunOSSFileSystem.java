@@ -21,6 +21,7 @@ package org.apache.hadoop.fs.aliyun.oss;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -51,6 +52,7 @@ import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.BlockingThreadPoolExecutorService;
+import org.apache.hadoop.util.Preconditions;
 import org.apache.hadoop.util.Progressable;
 
 import com.aliyun.oss.OSSErrorCode;
@@ -90,6 +92,7 @@ public class AliyunOSSFileSystem extends FileSystem {
   protected int maxConcurrentCopyTasksPerDir;
   protected ExecutorService boundedThreadPool;
   protected ExecutorService boundedCopyThreadPool;
+  protected boolean putIfNotExistImplementedByServer = false;
 
   protected static final PathFilter DEFAULT_FILTER = new PathFilter() {
     @Override
@@ -124,11 +127,12 @@ public class AliyunOSSFileSystem extends FileSystem {
 
     try {
       // get the status or throw a FNFE
-      status = getFileStatus(path);
- 
-      // if the thread reaches here, there is something at the path
+      // status = getFileStatus(path);
+      status = innerOssGetFileStatus(path,
+          overwrite ? AliyunOSSStatusProbeEnum.DIRECTORIES : AliyunOSSStatusProbeEnum.ALL, false);
+
+      // Directory can not be overwrited
       if (status.isDirectory()) {
-        // path references a directory
         throw new FileAlreadyExistsException(path + " is a directory");
       }
       if (!overwrite) {
@@ -176,10 +180,21 @@ public class AliyunOSSFileSystem extends FileSystem {
         bufferSize, replication, blockSize, progress);
   }
 
+  // @Override
+  // public boolean delete(Path path, boolean recursive) throws IOException {
+  //   try {
+  //     return innerDelete(getFileStatus(path), recursive);
+  //   } catch (FileNotFoundException e) {
+  //     LOG.debug("Couldn't delete {} - does not exist", path);
+  //     return false;
+  //   }
+  // }
+
   @Override
   public boolean delete(Path path, boolean recursive) throws IOException {
     try {
-      return innerDelete(getFileStatus(path), recursive);
+      OSSFileStatus ossFileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.ALL, true);
+      return innerDelete(ossFileStatus, recursive);
     } catch (FileNotFoundException e) {
       LOG.debug("Couldn't delete {} - does not exist", path);
       return false;
@@ -196,24 +211,61 @@ public class AliyunOSSFileSystem extends FileSystem {
    * @return  true if delete is successful else false.
    * @throws IOException due to inability to delete a directory or file.
    */
-  private boolean innerDelete(FileStatus status, boolean recursive)
+  // private boolean innerDelete(FileStatus status, boolean recursive)
+  //     throws IOException {
+  //   Path f = status.getPath();
+  //   String p = f.toUri().getPath();
+  //   FileStatus[] statuses;
+  //   // indicating root directory "/".
+  //   if (p.equals("/")) {
+  //     statuses = listStatus(status.getPath());
+  //     boolean isEmptyDir = statuses.length <= 0;
+  //     return rejectRootDirectoryDelete(isEmptyDir, recursive);
+  //   }
+
+  //   String key = pathToKey(f);
+  //   if (status.isDirectory()) {
+  //     if (!recursive) {
+  //       // Check whether it is an empty directory or not
+  //       statuses = listStatus(status.getPath());
+  //       if (statuses.length > 0) {
+  //         throw new IOException("Cannot remove directory " + f +
+  //             ": It is not empty!");
+  //       } else {
+  //         // Delete empty directory without '-r'
+  //         key = AliyunOSSUtils.maybeAddTrailingSlash(key);
+  //         store.deleteObject(key);
+  //       }
+  //     } else {
+  //       store.deleteDirs(key);
+  //     }
+  //   } else {
+  //     store.deleteObject(key);
+  //   }
+
+  //   createFakeDirectoryIfNecessary(f);
+  //   return true;
+  // }
+
+  private boolean innerDelete(OSSFileStatus ossFileStatus, boolean recursive)
       throws IOException {
-    Path f = status.getPath();
+    // get qulified path
+    Path f = ossFileStatus.getPath();
     String p = f.toUri().getPath();
     FileStatus[] statuses;
     // indicating root directory "/".
     if (p.equals("/")) {
-      statuses = listStatus(status.getPath());
-      boolean isEmptyDir = statuses.length <= 0;
-      return rejectRootDirectoryDelete(isEmptyDir, recursive);
+      LOG.error("OSS: Cannot delete the root directory."
+          + " Path: {}. Recursive: {}",
+          ossFileStatus.getPath(), recursive);
+      return false;
     }
 
     String key = pathToKey(f);
-    if (status.isDirectory()) {
+    if (ossFileStatus.isDirectory()) {
       if (!recursive) {
         // Check whether it is an empty directory or not
-        statuses = listStatus(status.getPath());
-        if (statuses.length > 0) {
+        if (ossFileStatus.getEmptyFlag() == AliyunOSSDirEmptyFlag.NOT_EMPTY) {
           throw new IOException("Cannot remove directory " + f +
               ": It is not empty!");
         } else {
@@ -228,7 +280,9 @@ public class AliyunOSSFileSystem extends FileSystem {
       store.deleteObject(key);
     }
 
-    createFakeDirectoryIfNecessary(f);
+    //change createFakeDirectoryIfNecessary(f) to createFakeDirectoryIfNecessary(f.getParent())
+    // to avoid creating fake directory for root directory  
+    createFakeDirectoryIfNecessary(f.getParent());
     return true;
   }
 
@@ -258,10 +312,26 @@ public class AliyunOSSFileSystem extends FileSystem {
   }
 
   protected void createFakeDirectoryIfNecessary(Path f) throws IOException {
+    if (f == null || f.isRoot()) {
+      LOG.debug("Not creating fake directory for root");
+      return;
+    }
+
     String key = pathToKey(f);
-    if (StringUtils.isNotEmpty(key) && !exists(f)) {
-      LOG.debug("Creating new fake directory at {}", f);
-      mkdir(pathToKey(f.getParent()));
+    String dirKey = AliyunOSSUtils.maybeAddTrailingSlash(key);
+    if (StringUtils.isNotEmpty(dirKey)) {
+      if (putIfNotExistImplementedByServer) {
+        // The file or path is created only if it does not exist.
+        // Having this functionality handled by the server can reduce one head QPS
+        store.storeEmptyFileIfNecessary(dirKey);
+        LOG.debug("Creating new fake directory if Necessary at {}", f);
+
+      } else {
+        if (!ossExists(f, AliyunOSSStatusProbeEnum.DIRECTORIES)) {
+          LOG.debug("Creating new fake directory at {}", f);
+          store.storeEmptyFile(dirKey);
+        }
+      }
     }
   }
 
@@ -369,6 +439,8 @@ public class AliyunOSSFileSystem extends FileSystem {
     LOG.debug("Using OSSBlockOutputStream with buffer = {}; block={};" +
             " queue limit={}",
         uploadBuffer, uploadPartSize, blockOutputActiveBlocks);
+    putIfNotExistImplementedByServer = conf.getBoolean(FS_OSS_PUT_IF_Not_EXIST_KEY,
+    FS_OSS_PUT_IF_Not_EXIST_DEFAULT);
     store = new AliyunOSSFileSystemStore();
     store.initialize(name, conf, username, statistics);
     maxKeys = conf.getInt(MAX_PAGING_KEYS_KEY, MAX_PAGING_KEYS_DEFAULT);
@@ -607,9 +679,27 @@ public class AliyunOSSFileSystem extends FileSystem {
     } while (fPart != null);
   }
 
+  // @Override
+  // public FSDataInputStream open(Path path, int bufferSize) throws IOException {
+  //   final FileStatus fileStatus = getFileStatus(path);
+  //   if (fileStatus.isDirectory()) {
+  //     throw new FileNotFoundException("Can't open " + path +
+  //         " because it is a directory");
+  //   }
+
+  //   return new FSDataInputStream(new AliyunOSSInputStream(getConf(),
+  //       new SemaphoredDelegatingExecutor(
+  //           boundedThreadPool, maxReadAheadPartNumber, true),
+  //       maxReadAheadPartNumber, store, pathToKey(path), fileStatus.getLen(),
+  //       statistics));
+  // }
+
   @Override
   public FSDataInputStream open(Path path, int bufferSize) throws IOException {
-    final FileStatus fileStatus = getFileStatus(path);
+    // if f does not exist, there will throw a FileNotFoundException
+    // if f is a file, fileStatus.isDirectory will be false
+    // if f is a dir, throw a FileNotFoundException
+    final OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE, false);
     if (fileStatus.isDirectory()) {
       throw new FileNotFoundException("Can't open " + path +
           " because it is a directory");
@@ -622,6 +712,73 @@ public class AliyunOSSFileSystem extends FileSystem {
         statistics));
   }
 
+  // @Override
+  // public boolean rename(Path srcPath, Path dstPath) throws IOException {
+  //   if (srcPath.isRoot()) {
+  //     // Cannot rename root of file system
+  //     if (LOG.isDebugEnabled()) {
+  //       LOG.debug("Cannot rename the root of a filesystem");
+  //     }
+  //     return false;
+  //   }
+  //   Path parent = dstPath.getParent();
+  //   while (parent != null && !srcPath.equals(parent)) {
+  //     parent = parent.getParent();
+  //   }
+  //   if (parent != null) {
+  //     return false;
+  //   }
+  //   FileStatus srcStatus = getFileStatus(srcPath);
+  //   FileStatus dstStatus;
+  //   try {
+  //     dstStatus = getFileStatus(dstPath);
+  //   } catch (FileNotFoundException fnde) {
+  //     dstStatus = null;
+  //   }
+  //   if (dstStatus == null) {
+  //     // If dst doesn't exist, check whether dst dir exists or not
+  //     dstStatus = getFileStatus(dstPath.getParent());
+  //     if (!dstStatus.isDirectory()) {
+  //       throw new IOException(String.format(
+  //           "Failed to rename %s to %s, %s is a file", srcPath, dstPath,
+  //           dstPath.getParent()));
+  //     }
+  //   } else {
+  //     if (srcStatus.getPath().equals(dstStatus.getPath())) {
+  //       return !srcStatus.isDirectory();
+  //     } else if (dstStatus.isDirectory()) {
+  //       // If dst is a directory
+  //       dstPath = new Path(dstPath, srcPath.getName());
+  //       FileStatus[] statuses;
+  //       try {
+  //         statuses = listStatus(dstPath);
+  //       } catch (FileNotFoundException fnde) {
+  //         statuses = null;
+  //       }
+  //       if (statuses != null && statuses.length > 0) {
+  //         // If dst exists and not a directory / not empty
+  //         throw new FileAlreadyExistsException(String.format(
+  //             "Failed to rename %s to %s, file already exists or not empty!",
+  //             srcPath, dstPath));
+  //       }
+  //     } else {
+  //       // If dst is not a directory
+  //       throw new FileAlreadyExistsException(String.format(
+  //           "Failed to rename %s to %s, file already exists!", srcPath,
+  //           dstPath));
+  //     }
+  //   }
+
+  //   boolean succeed;
+  //   if (srcStatus.isDirectory()) {
+  //     succeed = copyDirectory(srcPath, dstPath);
+  //   } else {
+  //     succeed = copyFile(srcPath, srcStatus.getLen(), dstPath);
+  //   }
+
+  //   return srcPath.equals(dstPath) || (succeed && delete(srcPath, true));
+  // }
+
   @Override
   public boolean rename(Path srcPath, Path dstPath) throws IOException {
     if (srcPath.isRoot()) {
@@ -631,6 +788,7 @@ public class AliyunOSSFileSystem extends FileSystem {
       }
       return false;
     }
+    //src can't be a subpath of dst
     Path parent = dstPath.getParent();
     while (parent != null && !srcPath.equals(parent)) {
       parent = parent.getParent();
@@ -638,17 +796,19 @@ public class AliyunOSSFileSystem extends FileSystem {
     if (parent != null) {
       return false;
     }
-    FileStatus srcStatus = getFileStatus(srcPath);
+    FileStatus srcStatus = innerOssGetFileStatus(srcPath, AliyunOSSStatusProbeEnum.ALL, false);
+
     FileStatus dstStatus;
     try {
-      dstStatus = getFileStatus(dstPath);
+      dstStatus = innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.ALL, false);
     } catch (FileNotFoundException fnde) {
       dstStatus = null;
     }
     if (dstStatus == null) {
       // If dst doesn't exist, check whether dst dir exists or not
-      dstStatus = getFileStatus(dstPath.getParent());
-      if (!dstStatus.isDirectory()) {
+      // this raise a FileNotFoundException if dst dir does not exist
+      FileStatus dstParentStatus = innerOssGetFileStatus(dstPath.getParent(), AliyunOSSStatusProbeEnum.ALL, false);
+      if (!dstParentStatus.isDirectory()) {
         throw new IOException(String.format(
             "Failed to rename %s to %s, %s is a file", srcPath, dstPath,
             dstPath.getParent()));
@@ -658,14 +818,17 @@ public class AliyunOSSFileSystem extends FileSystem {
         return !srcStatus.isDirectory();
       } else if (dstStatus.isDirectory()) {
         // If dst is a directory
-        dstPath = new Path(dstPath, srcPath.getName());
-        FileStatus[] statuses;
+        Path dstDirWithsrcPath = new Path(dstPath, srcPath.getName());
+
+        OSSFileStatus dstDirWithsrcPathStatus;
         try {
-          statuses = listStatus(dstPath);
+          dstDirWithsrcPathStatus = innerOssGetFileStatus(dstDirWithsrcPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
         } catch (FileNotFoundException fnde) {
-          statuses = null;
+          dstDirWithsrcPathStatus = null;
         }
-        if (statuses != null && statuses.length > 0) {
+
+        if (dstDirWithsrcPathStatus != null
+            && dstDirWithsrcPathStatus.getEmptyFlag() == AliyunOSSDirEmptyFlag.EMPTY) {
           // If dst exists and not a directory / not empty
           throw new FileAlreadyExistsException(String.format(
               "Failed to rename %s to %s, file already exists or not empty!",
@@ -688,7 +851,6 @@ public class AliyunOSSFileSystem extends FileSystem {
 
     return srcPath.equals(dstPath) || (succeed && delete(srcPath, true));
   }
-
   /**
    * Copy file from source path to destination path.
    * (the caller should make sure srcPath is a file and dstPath is valid)
@@ -802,6 +964,142 @@ public class AliyunOSSFileSystem extends FileSystem {
 
     default:
       return super.hasPathCapability(p, cap);
+    }
+  }
+
+  private OSSFileStatus innerOssGetFileStatus(final Path path,
+      final Set<AliyunOSSStatusProbeEnum> probes,
+      final boolean needEmptyDirectoryFlag) throws IOException {
+    LOG.debug("innerOssGetFileStatus {}", path);
+    final Path qualifiedPath = path.makeQualified(uri, workingDir);
+    LOG.debug("qualifiedPath {}", qualifiedPath);
+    String key = pathToKey(qualifiedPath);
+    LOG.debug("key {}", key);
+
+    // Can only determine if it is empty through a list operation
+    LOG.debug("checkArgument needEmptyDirectoryFlag {}  probes {};", needEmptyDirectoryFlag, probes);
+    if (needEmptyDirectoryFlag && !probes.contains(AliyunOSSStatusProbeEnum.List)) {
+      throw new IllegalArgumentException("needEmptyDirectoryFlag is true, but probes does not contain List");
+    }
+
+    // Root always exists
+    if (key.length() == 0) {
+      return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
+    }
+
+    if (!key.endsWith("/") && probes.contains(AliyunOSSStatusProbeEnum.Head)) {
+      // look for the simple file
+      ObjectMetadata meta = store.getObjectMetadataV2(key);
+      if (meta != null) {
+        // meta will not be null.if data is not exist,therer will throw exception
+        LOG.debug("Found exact file: normal file {}", key);
+        return new OSSFileStatus(meta.getContentLength(), false, 1, getDefaultBlockSize(path),
+            meta.getLastModified().getTime(), qualifiedPath, username);
+      }
+    }
+
+    // if a DirMarker can be found through a Head operation, it can reduce one list
+    // operation. Head operations are relatively lighter than list operations, so
+    // doing one more Head operation can be beneficial.
+    String dirKey = maybeAddTrailingSlash(key);
+    LOG.debug("dirKey {}", dirKey);
+    if (needEmptyDirectoryFlag == false && !dirKey.isEmpty() && probes.contains(AliyunOSSStatusProbeEnum.DirMarker)) {
+      // look for the DirMarker
+      ObjectMetadata meta = store.getObjectMetadataV2(dirKey);
+      LOG.debug("Found exact file: DirMarker file {} meta is null:{}", dirKey, meta == null);
+      if (meta != null) {
+        return new OSSFileStatus(meta.getContentLength(), true, 1, getDefaultBlockSize(path),
+            meta.getLastModified().getTime(), qualifiedPath, username);
+      }
+    }
+
+    // execute the list
+    if (probes.contains(AliyunOSSStatusProbeEnum.List)) {
+      // list size is dir marker + at least one entry
+      int listSize = needEmptyDirectoryFlag ? 2 : 1;
+      LOG.debug("execute the list listSize {}", listSize);
+
+      OSSListRequest listRequest = store.createListObjectsRequest(dirKey,
+          listSize, null, null, false);
+
+      OSSListResult listResult = store.listObjects(listRequest);
+      if (listResult != null) {
+        LOG.debug("execute the list isV1 {} , isV2 {}", listResult.isV1(), !listResult.isV1());
+
+        boolean isTruncated = listResult.isTruncated();
+        LOG.debug("execute the list getListResultNum {} isTruncated {} Result {}",
+            getListResultNum(listResult), isTruncated, listResult.getListResultContent());
+
+        while (isTruncated && getListResultNum(listResult) < listSize) {
+          OSSListResult tempListResult = store.continueListObjects(listRequest, listResult);
+          isTruncated = tempListResult.isTruncated();
+          listResult.getObjectSummaries().addAll(tempListResult.getObjectSummaries());
+          listResult.getCommonPrefixes().addAll(tempListResult.getCommonPrefixes());
+          LOG.debug("continue List  getListResultNum {} isTruncated {}", getListResultNum(listResult), isTruncated);
+        }
+
+        if (getListResultNum(listResult) > 0) {
+          if (needEmptyDirectoryFlag && listResult.representsEmptyDirectory(dirKey)) {
+            LOG.debug("Found a directory: {}", dirKey);
+            return new OSSFileStatus(AliyunOSSDirEmptyFlag.EMPTY, 0, 1, 0, 0, qualifiedPath, username);
+          }
+          return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
+        }
+      } else {
+        LOG.error("execute the list listResult is null.path {}",path);
+        throw new IOException("listResult is null");
+      }
+    }
+
+    LOG.debug("Not Found: {}", path);
+    throw new FileNotFoundException("No such file or directory: " + path);
+  }
+  private int getListResultNum(OSSListResult listResult) {
+    int resultNum = 0;
+    if (CollectionUtils.isNotEmpty(listResult.getObjectSummaries())) {
+      resultNum = resultNum + listResult.getObjectSummaries().size();
+    }
+
+    if (CollectionUtils.isNotEmpty(listResult.getCommonPrefixes())) {
+      resultNum = resultNum + listResult.getCommonPrefixes().size();
+    }
+    return resultNum;
+  }
+
+  private boolean ossExists(final Path path, final Set<AliyunOSSStatusProbeEnum> probes)
+      throws IOException {
+    try {
+      innerOssGetFileStatus(path, probes, false);
+      return true;
+    } catch (FileNotFoundException e) {
+      return false;
+    }
+  }
+
+  @Override
+  @SuppressWarnings("deprecation")
+  public boolean isDirectory(Path path) throws IOException {
+    LOG.debug("isDirectory: path={}", path);
+
+    try {
+      OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.DIRECTORIES, false);
+      return fileStatus.isDirectory();
+    } catch (FileNotFoundException e) {
+      LOG.debug("isDirectory: path={}. not found or it is a file", path);
+      return false; // f does not exist
+    }
+  }
+
+  @Override
+  @SuppressWarnings("deprecation")
+  public boolean isFile(Path path) throws IOException {
+    LOG.debug("isFile: path={}", path);
+    try {
+      return innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE, false).isFile();
+    } catch (FileNotFoundException e) {
+      // not found or it is a dir.
+      LOG.debug("isFile: path={} . not found or it is a dir", path);
+      return false;
     }
   }
 }

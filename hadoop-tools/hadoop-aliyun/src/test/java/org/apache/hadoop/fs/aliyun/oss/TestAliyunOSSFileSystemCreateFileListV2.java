@@ -15,7 +15,7 @@ import java.util.SimpleTimeZone;
 import java.util.logging.Logger;
 import java.util.Date;
 
-import org.apache.hadoop.fs.aliyun.oss.AliyunOSSV2FileSystem;
+import org.apache.hadoop.fs.aliyun.oss.AliyunOSSFileSystem;
 import org.apache.hadoop.fs.aliyun.oss.OSS;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.util.Progressable;
@@ -40,7 +40,7 @@ import com.aliyun.oss.model.ListObjectsRequest;
 import com.aliyun.oss.model.ListObjectsV2Result;
 import com.aliyun.oss.model.ObjectMetadata;
 
-public class TestAliyunOSSV2FileSystemCreateFileListV2 extends AbstractOSSMockTest {
+public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest {
   // private static final Logger LOG =
   // LoggerFactory.getLogger(TestAliyunOSSV2FileSystemUT.class);
 

@@ -340,6 +340,36 @@ public class AliyunOSSFileSystemStore {
   }
 
   /**
+   * Upload an empty file as an OSS object, using single upload.
+   *
+   * @param key object key.
+   * @throws IOException if failed to upload object.
+   */
+  public void storeEmptyFileIfNecessary(String key) throws IOException {
+    ObjectMetadata dirMeta = new ObjectMetadata();
+    
+    byte[] buffer = new byte[0];
+    ByteArrayInputStream in = new ByteArrayInputStream(buffer);
+    dirMeta.setContentLength(0);
+    dirMeta.setHeader("x-oss-forbid-overwrite", "true");
+    try {
+      ossClient.putObject(bucketName, key, in, dirMeta);
+      statistics.incrementWriteOps(1);
+    } catch (OSSException osse) {
+      if (osse.getErrorCode() == OSSErrorCode.PRECONDITION_FAILED) {
+        LOG.debug("Object already exists, ignore it.");
+      } else {
+        LOG.debug("Exception thrown when get object meta: "
+            + key + ", exception: " + osse);
+        throw osse;
+      }
+    }
+    finally {
+      in.close();
+    }
+  }
+
+  /**
    * Copy an object from source key to destination key.
    *
    * @param srcKey source key.

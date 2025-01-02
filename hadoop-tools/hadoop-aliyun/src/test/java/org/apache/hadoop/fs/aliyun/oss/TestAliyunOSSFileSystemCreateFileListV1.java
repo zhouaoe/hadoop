@@ -19,7 +19,7 @@ import javax.security.auth.login.Configuration;
 
 import java.util.Date;
 
-import org.apache.hadoop.fs.aliyun.oss.AliyunOSSV2FileSystem;
+import org.apache.hadoop.fs.aliyun.oss.AliyunOSSFileSystem;
 import org.apache.hadoop.fs.aliyun.oss.OSS;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.util.Progressable;
@@ -46,6 +46,6 @@ import com.aliyun.oss.model.ObjectMetadata;
 
 import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
 
-public class TestAliyunOSSV2FileSystemCreateFileListV1 extends TestAliyunOSSV2FileSystemCreateFileListV2 {
+public class TestAliyunOSSFileSystemCreateFileListV1 extends TestAliyunOSSFileSystemCreateFileListV2 {
   protected int listVersion = LIST_V1;
 }

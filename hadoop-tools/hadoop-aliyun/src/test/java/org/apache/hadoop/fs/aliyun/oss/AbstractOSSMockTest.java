@@ -79,7 +79,7 @@ public abstract class AbstractOSSMockTest {
   }
 
   protected void initFs() throws Exception {
-    fs = new AliyunOSSV2FileSystem();
+    fs = new AliyunOSSFileSystem();
     URI uri = URI.create(FS_OSS + "://" + BUCKET);
     fs.initialize(uri, conf);
     ossClient = fs.getStore().getOSSClient();
@@ -237,10 +237,21 @@ public abstract class AbstractOSSMockTest {
         && request.getPrefix().equals(prefix);
   }
 
+  // protected ArgumentMatcher<GenericRequest> requestMatcher(String bucket, String key) {
+  //   return request -> request != null
+  //       && request.getBucketName().equals(bucket)
+  //       && request.getKey().equals(key);
+  // }
+
   protected ArgumentMatcher<GenericRequest> requestMatcher(String bucket, String key) {
-    return request -> request != null
-        && request.getBucketName().equals(bucket)
-        && request.getKey().equals(key);
+    return new ArgumentMatcher<GenericRequest>() {
+      @Override
+      public boolean matches(GenericRequest request) {
+        return request != null
+            && request.getBucketName().equals(bucket)
+            && request.getKey().equals(key);
+      }
+    };
   }
  
   protected void checkGetObjectMetadataCalled(int times, ArgumentMatcher<GenericRequest> matcher) {
