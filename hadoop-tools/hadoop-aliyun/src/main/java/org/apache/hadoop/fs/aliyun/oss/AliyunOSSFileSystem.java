@@ -265,9 +265,9 @@ public class AliyunOSSFileSystem extends FileSystem {
     if (ossFileStatus.isDirectory()) {
       if (!recursive) {
         // Check whether it is an empty directory or not
-        if (ossFileStatus.getEmptyFlag() == AliyunOSSDirEmptyFlag.NOT_EMPTY) {
+        if (ossFileStatus.getEmptyFlag() != AliyunOSSDirEmptyFlag.EMPTY) {
           throw new IOException("Cannot remove directory " + f +
-              ": It is not empty!");
+              ": It is not empty! it is not empty or unknown");
         } else {
           // Delete empty directory without '-r'
           key = AliyunOSSUtils.maybeAddTrailingSlash(key);
@@ -818,17 +818,17 @@ public class AliyunOSSFileSystem extends FileSystem {
         return !srcStatus.isDirectory();
       } else if (dstStatus.isDirectory()) {
         // If dst is a directory
-        Path dstDirWithsrcPath = new Path(dstPath, srcPath.getName());
+        dstPath = new Path(dstPath, srcPath.getName());
 
         OSSFileStatus dstDirWithsrcPathStatus;
         try {
-          dstDirWithsrcPathStatus = innerOssGetFileStatus(dstDirWithsrcPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
+          dstDirWithsrcPathStatus = innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
         } catch (FileNotFoundException fnde) {
           dstDirWithsrcPathStatus = null;
         }
 
         if (dstDirWithsrcPathStatus != null
-            && dstDirWithsrcPathStatus.getEmptyFlag() == AliyunOSSDirEmptyFlag.EMPTY) {
+            && dstDirWithsrcPathStatus.getEmptyFlag() != AliyunOSSDirEmptyFlag.EMPTY) {
           // If dst exists and not a directory / not empty
           throw new FileAlreadyExistsException(String.format(
               "Failed to rename %s to %s, file already exists or not empty!",
@@ -1039,9 +1039,13 @@ public class AliyunOSSFileSystem extends FileSystem {
         }
 
         if (getListResultNum(listResult) > 0) {
-          if (needEmptyDirectoryFlag && listResult.representsEmptyDirectory(dirKey)) {
-            LOG.debug("Found a directory: {}", dirKey);
-            return new OSSFileStatus(AliyunOSSDirEmptyFlag.EMPTY, 0, 1, 0, 0, qualifiedPath, username);
+          if (needEmptyDirectoryFlag) {
+            if (listResult.representsEmptyDirectory(dirKey)) {
+              LOG.debug("Found a directory: {}", dirKey);
+              return new OSSFileStatus(AliyunOSSDirEmptyFlag.EMPTY, 0, 1, 0, 0, qualifiedPath, username);
+            } else {
+              return new OSSFileStatus(AliyunOSSDirEmptyFlag.NOT_EMPTY, 0, 1, 0, 0, qualifiedPath, username);
+            }
           }
           return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
         }
