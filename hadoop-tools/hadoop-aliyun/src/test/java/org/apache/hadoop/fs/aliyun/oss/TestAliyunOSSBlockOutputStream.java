@@ -48,6 +48,7 @@ import static org.apache.hadoop.fs.aliyun.oss.Constants.FAST_UPLOAD_BYTEBUFFER_D
 import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_DEFAULT;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_KEY;
 import static org.apache.hadoop.fs.contract.ContractTestUtils.IO_CHUNK_BUFFER_SIZE;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_PUT_IF_NOT_EXIST_KEY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -136,6 +137,42 @@ public class TestAliyunOSSBlockOutputStream {
     assertEquals(3 * size, statistics.getBytesWritten());
     bufferShouldReleased();
   }
+
+  @Test
+  public void testCreateFakeDirectoryIfNecessary() throws IOException {
+
+    Configuration conf = new Configuration();
+    conf.setInt(MULTIPART_UPLOAD_PART_SIZE_KEY, PART_SIZE);
+    conf.setInt(IO_CHUNK_BUFFER_SIZE,
+        conf.getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 0));
+    conf.setInt(Constants.UPLOAD_ACTIVE_BLOCKS_KEY, 20);
+    conf.setLong(FAST_UPLOAD_BUFFER_MEMORY_LIMIT, MEMORY_LIMIT);
+    conf.setBoolean(FS_OSS_PUT_IF_NOT_EXIST_KEY,true);    
+    fs = AliyunOSSTestUtils.createTestFileSystem(conf);
+    Long downloadPartSize = conf.getLong("fs.oss.multipart.download.size",
+   10);
+
+
+    FileSystem.clearStatistics();
+    long size = 1024 * 1024;
+    FileSystem.Statistics statistics =
+        FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
+    ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
+    assertEquals(6, statistics.getReadOps());
+    assertEquals(size - 1, statistics.getBytesRead());
+    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
+    assertEquals(size - 1, statistics.getBytesWritten());
+    bufferShouldReleased();
+
+    ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
+    assertEquals(12, statistics.getReadOps()); //reduce 2 query ops
+    assertEquals(2 * size - 1, statistics.getBytesRead());
+    assertEquals(6, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 1
+
+    assertEquals(2 * size - 1, statistics.getBytesWritten());
+    bufferShouldReleased();
+  }
+
 
   @Test
   public void testMultiPartUpload() throws IOException {

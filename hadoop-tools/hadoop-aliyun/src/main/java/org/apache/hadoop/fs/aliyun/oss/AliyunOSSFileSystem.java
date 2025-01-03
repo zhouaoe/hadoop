@@ -127,7 +127,6 @@ public class AliyunOSSFileSystem extends FileSystem {
 
     try {
       // get the status or throw a FNFE
-      // status = getFileStatus(path);
       status = innerOssGetFileStatus(path,
           overwrite ? AliyunOSSStatusProbeEnum.DIRECTORIES : AliyunOSSStatusProbeEnum.ALL, false);
 
@@ -172,6 +171,7 @@ public class AliyunOSSFileSystem extends FileSystem {
     Path parent = path.getParent();
     if (parent != null) {
       // expect this to raise an exception if there is no parent
+
       if (!getFileStatus(parent).isDirectory()) {
         throw new FileAlreadyExistsException("Not a directory: " + parent);
       }
@@ -179,16 +179,6 @@ public class AliyunOSSFileSystem extends FileSystem {
     return create(path, permission, flags.contains(CreateFlag.OVERWRITE),
         bufferSize, replication, blockSize, progress);
   }
-
-  // @Override
-  // public boolean delete(Path path, boolean recursive) throws IOException {
-  //   try {
-  //     return innerDelete(getFileStatus(path), recursive);
-  //   } catch (FileNotFoundException e) {
-  //     LOG.debug("Couldn't delete {} - does not exist", path);
-  //     return false;
-  //   }
-  // }
 
   @Override
   public boolean delete(Path path, boolean recursive) throws IOException {
@@ -200,52 +190,6 @@ public class AliyunOSSFileSystem extends FileSystem {
       return false;
     }
   }
-
-  /**
-   * Delete an object. See {@link #delete(Path, boolean)}.
-   *
-   * @param status fileStatus object
-   * @param recursive if path is a directory and set to
-   * true, the directory is deleted else throws an exception. In
-   * case of a file the recursive can be set to either true or false.
-   * @return  true if delete is successful else false.
-   * @throws IOException due to inability to delete a directory or file.
-   */
-  // private boolean innerDelete(FileStatus status, boolean recursive)
-  //     throws IOException {
-  //   Path f = status.getPath();
-  //   String p = f.toUri().getPath();
-  //   FileStatus[] statuses;
-  //   // indicating root directory "/".
-  //   if (p.equals("/")) {
-  //     statuses = listStatus(status.getPath());
-  //     boolean isEmptyDir = statuses.length <= 0;
-  //     return rejectRootDirectoryDelete(isEmptyDir, recursive);
-  //   }
-
-  //   String key = pathToKey(f);
-  //   if (status.isDirectory()) {
-  //     if (!recursive) {
-  //       // Check whether it is an empty directory or not
-  //       statuses = listStatus(status.getPath());
-  //       if (statuses.length > 0) {
-  //         throw new IOException("Cannot remove directory " + f +
-  //             ": It is not empty!");
-  //       } else {
-  //         // Delete empty directory without '-r'
-  //         key = AliyunOSSUtils.maybeAddTrailingSlash(key);
-  //         store.deleteObject(key);
-  //       }
-  //     } else {
-  //       store.deleteDirs(key);
-  //     }
-  //   } else {
-  //     store.deleteObject(key);
-  //   }
-
-  //   createFakeDirectoryIfNecessary(f);
-  //   return true;
-  // }
 
   private boolean innerDelete(OSSFileStatus ossFileStatus, boolean recursive)
       throws IOException {
@@ -280,7 +224,6 @@ public class AliyunOSSFileSystem extends FileSystem {
       store.deleteObject(key);
     }
 
-    //change createFakeDirectoryIfNecessary(f) to createFakeDirectoryIfNecessary(f.getParent())
     // to avoid creating fake directory for root directory  
     createFakeDirectoryIfNecessary(f.getParent());
     return true;
@@ -337,44 +280,7 @@ public class AliyunOSSFileSystem extends FileSystem {
 
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
-    Path qualifiedPath = path.makeQualified(uri, workingDir);
-    String key = pathToKey(qualifiedPath);
-
-    // Root always exists
-    if (key.length() == 0) {
-      return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
-    }
-
-    ObjectMetadata meta = store.getObjectMetadata(key);
-    // If key not found and key does not end with "/"
-    if (meta == null && !key.endsWith("/")) {
-      // In case of 'dir + "/"'
-      key += "/";
-      meta = store.getObjectMetadata(key);
-    }
-    if (meta == null) {
-      OSSListRequest listRequest = store.createListObjectsRequest(key,
-          maxKeys, null, null, false);
-      OSSListResult listing = store.listObjects(listRequest);
-      do {
-        if (CollectionUtils.isNotEmpty(listing.getObjectSummaries()) ||
-            CollectionUtils.isNotEmpty(listing.getCommonPrefixes())) {
-          return new OSSFileStatus(0, true, 1, 0, 0, qualifiedPath, username);
-        } else if (listing.isTruncated()) {
-          listing = store.continueListObjects(listRequest, listing);
-        } else {
-          throw new FileNotFoundException(
-              path + ": No such file or directory!");
-        }
-      } while (true);
-    } else if (objectRepresentsDirectory(key, meta.getContentLength())) {
-      return new OSSFileStatus(0, true, 1, 0, meta.getLastModified().getTime(),
-          qualifiedPath, username);
-    } else {
-      return new OSSFileStatus(meta.getContentLength(), false, 1,
-          getDefaultBlockSize(path), meta.getLastModified().getTime(),
-          qualifiedPath, username);
-    }
+    return innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.ALL, false);
   }
 
   @Override
@@ -439,8 +345,8 @@ public class AliyunOSSFileSystem extends FileSystem {
     LOG.debug("Using OSSBlockOutputStream with buffer = {}; block={};" +
             " queue limit={}",
         uploadBuffer, uploadPartSize, blockOutputActiveBlocks);
-    putIfNotExistImplementedByServer = conf.getBoolean(FS_OSS_PUT_IF_Not_EXIST_KEY,
-    FS_OSS_PUT_IF_Not_EXIST_DEFAULT);
+    putIfNotExistImplementedByServer = conf.getBoolean(FS_OSS_PUT_IF_NOT_EXIST_KEY,
+    FS_OSS_PUT_IF_NOT_EXIST_DEFAULT);
     store = new AliyunOSSFileSystemStore();
     store.initialize(name, conf, username, statistics);
     maxKeys = conf.getInt(MAX_PAGING_KEYS_KEY, MAX_PAGING_KEYS_DEFAULT);
@@ -1058,6 +964,13 @@ public class AliyunOSSFileSystem extends FileSystem {
     LOG.debug("Not Found: {}", path);
     throw new FileNotFoundException("No such file or directory: " + path);
   }
+
+
+// private OSSFileStatus getFileStatus(Path path) throws IOException
+// {
+//   return innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.ALL, false);;
+// }
+
   private int getListResultNum(OSSListResult listResult) {
     int resultNum = 0;
     if (CollectionUtils.isNotEmpty(listResult.getObjectSummaries())) {

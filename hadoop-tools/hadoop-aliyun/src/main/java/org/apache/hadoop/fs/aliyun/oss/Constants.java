@@ -236,6 +236,6 @@ public final class Constants {
    * Default factory:
    * {@code org.apache.hadoop.fs.oss.DefaultOSSClientFactory}.
    */
-  public static final String FS_OSS_PUT_IF_Not_EXIST_KEY = "fs.oss.put_if_not_exist";
-  public static final boolean FS_OSS_PUT_IF_Not_EXIST_DEFAULT = false;
+  public static final String FS_OSS_PUT_IF_NOT_EXIST_KEY = "fs.oss.put_if_not_exist";
+  public static final boolean FS_OSS_PUT_IF_NOT_EXIST_DEFAULT = false;
 }

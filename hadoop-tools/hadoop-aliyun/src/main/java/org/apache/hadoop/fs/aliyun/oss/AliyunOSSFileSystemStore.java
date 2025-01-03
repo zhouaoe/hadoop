@@ -310,7 +310,7 @@ public class AliyunOSSFileSystemStore {
       statistics.incrementReadOps(1);
       return objectMeta;
     } catch (OSSException osse) {
-      if (osse.getErrorCode() != OSSErrorCode.NO_SUCH_KEY) {
+      if (!StringUtils.equals(osse.getErrorCode(), OSSErrorCode.NO_SUCH_KEY)) {
         LOG.debug("Exception thrown when get object meta: "
             + key + ", exception: " + osse);
         throw osse;
@@ -356,8 +356,9 @@ public class AliyunOSSFileSystemStore {
       ossClient.putObject(bucketName, key, in, dirMeta);
       statistics.incrementWriteOps(1);
     } catch (OSSException osse) {
-      if (osse.getErrorCode() == OSSErrorCode.PRECONDITION_FAILED) {
-        LOG.debug("Object already exists, ignore it.");
+      if (StringUtils.equals(osse.getErrorCode(),OSSErrorCode.FILE_ALREADY_EXISTS)) {
+        statistics.incrementWriteOps(1);
+        LOG.debug("Object already exists, ignore it: " + key);
       } else {
         LOG.debug("Exception thrown when get object meta: "
             + key + ", exception: " + osse);
