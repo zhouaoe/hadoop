@@ -179,9 +179,7 @@ public class TestRequestFactory extends AbstractHadoopTestBase {
     a(factory.newListObjectsV2RequestBuilder(path, "/", 1));
     a(factory.newMultipartUploadRequestBuilder(path, null));
     a(factory.newPutObjectRequestBuilder(path,
-        PutObjectOptions.keepingDirs(), -1, true));
-    a(factory.newPutObjectRequestBuilder(path,
-        PutObjectOptions.deletingDirs(), 1024, false));
+        PutObjectOptions.defaultOptions(), -1, true));
   }
 
   /**
@@ -200,11 +198,13 @@ public class TestRequestFactory extends AbstractHadoopTestBase {
     String path = "path";
     String id = "1";
 
-    a(factory.newUploadPartRequestBuilder(path, id, 1, 0));
-    a(factory.newUploadPartRequestBuilder(path, id, 2, 128_000_000));
+    a(factory.newUploadPartRequestBuilder(path, id, 1, false, 0));
+    a(factory.newUploadPartRequestBuilder(path, id, 2, false,
+        128_000_000));
     // partNumber is past the limit
     intercept(PathIOException.class, () ->
-        factory.newUploadPartRequestBuilder(path, id, 3, 128_000_000));
+        factory.newUploadPartRequestBuilder(path, id, 3, true,
+            128_000_000));
 
     assertThat(countRequests.counter.get())
         .describedAs("request preparation count")
@@ -241,7 +241,9 @@ public class TestRequestFactory extends AbstractHadoopTestBase {
         .withMultipartPartCountLimit(2)
         .build();
     final UploadPartRequest upload =
-        factory.newUploadPartRequestBuilder("path", "id", 2, 128_000_000).build();
+        factory.newUploadPartRequestBuilder("path", "id", 2,
+            true, 128_000_000)
+            .build();
     assertApiTimeouts(DEFAULT_PART_UPLOAD_TIMEOUT, upload);
   }
 
@@ -261,12 +263,12 @@ public class TestRequestFactory extends AbstractHadoopTestBase {
 
     // A simple PUT
     final PutObjectRequest put = factory.newPutObjectRequestBuilder(path,
-        PutObjectOptions.deletingDirs(), 1024, false).build();
+        PutObjectOptions.defaultOptions(), 1024, false).build();
     assertApiTimeouts(partDuration, put);
 
     // multipart part
     final UploadPartRequest upload = factory.newUploadPartRequestBuilder(path,
-            "1", 3, 128_000_000)
+        "1", 3, false, 128_000_000)
         .build();
     assertApiTimeouts(partDuration, upload);
 

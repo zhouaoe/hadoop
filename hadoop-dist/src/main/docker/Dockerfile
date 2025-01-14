@@ -13,4 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-org.apache.hadoop.fs.s3native.NativeS3FileSystem
+FROM apache/hadoop-runner:@docker.hadoop-runner.version@
+
+COPY . /opt/hadoop
+
+WORKDIR /opt/hadoop
+
+USER root
+
+RUN chown -R hadoop:users /opt/hadoop
+
+USER hadoop

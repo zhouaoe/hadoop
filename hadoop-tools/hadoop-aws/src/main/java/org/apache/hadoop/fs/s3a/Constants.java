@@ -444,6 +444,20 @@ public final class Constants {
   public static final Duration DEFAULT_CONNECTION_IDLE_TIME_DURATION =
       Duration.ofSeconds(60);
 
+  /**
+   * Should PUT requests await a 100 CONTINUE responses before uploading
+   * data?
+   * <p>
+   * Value: {@value}.
+   */
+  public static final String CONNECTION_EXPECT_CONTINUE =
+      "fs.s3a.connection.expect.continue";
+
+  /**
+   * Default value for {@link #CONNECTION_EXPECT_CONTINUE}.
+   */
+  public static final boolean CONNECTION_EXPECT_CONTINUE_DEFAULT = true;
+
   // socket send buffer to be used in Amazon client
   public static final String SOCKET_SEND_BUFFER = "fs.s3a.socket.send.buffer";
   public static final int DEFAULT_SOCKET_SEND_BUFFER = 8 * 1024;
@@ -767,6 +781,35 @@ public final class Constants {
       "fs.s3a.encryption.context";
 
   /**
+   * Client side encryption (CSE-CUSTOM) with custom cryptographic material manager class name.
+   * Custom keyring class name for CSE-KMS.
+   * value:{@value}
+   */
+  public static final String S3_ENCRYPTION_CSE_CUSTOM_KEYRING_CLASS_NAME =
+          "fs.s3a.encryption.cse.custom.keyring.class.name";
+
+  /**
+   * Config to provide backward compatibility with V1 encryption client.
+   * Enabling this configuration will invoke the followings
+   * 1. Unencrypted s3 objects will be read using unencrypted/base s3 client when CSE is enabled.
+   * 2. Size of encrypted object will be fetched from object header if present or
+   * calculated using ranged S3 GET calls.
+   * value:{@value}
+   */
+  public static final String S3_ENCRYPTION_CSE_V1_COMPATIBILITY_ENABLED =
+          "fs.s3a.encryption.cse.v1.compatibility.enabled";
+
+  /**
+   * Default value : {@value}.
+   */
+  public static final boolean S3_ENCRYPTION_CSE_V1_COMPATIBILITY_ENABLED_DEFAULT = false;
+
+  /**
+   * S3 CSE-KMS KMS region config.
+   */
+  public static final String S3_ENCRYPTION_CSE_KMS_REGION = "fs.s3a.encryption.cse.kms.region";
+
+  /**
    * List of custom Signers. The signer class will be loaded, and the signer
    * name will be associated with this signer class in the S3 SDK.
    * Examples
@@ -805,6 +848,7 @@ public final class Constants {
       "fs.s3a." + Constants.AWS_SERVICE_IDENTIFIER_STS.toLowerCase()
           + ".signing-algorithm";
 
+  @Deprecated
   public static final String S3N_FOLDER_SUFFIX = "_$folder$";
   public static final String FS_S3A_BLOCK_SIZE = "fs.s3a.block.size";
   public static final String FS_S3A = "s3a";
@@ -825,10 +869,13 @@ public final class Constants {
   /**
    * Paths considered "authoritative".
    * When S3guard was supported, this skipped checks to s3 on directory listings.
-   * It is also use to optionally disable marker retentation purely on these
-   * paths -a feature which is still retained/available.
+   * It was also possilbe to use to optionally disable marker retentation purely on these
+   * paths -a feature which is no longer available.
+   * As no feature uses this any more, it is declared as deprecated.
    * */
+  @Deprecated
   public static final String AUTHORITATIVE_PATH = "fs.s3a.authoritative.path";
+  @Deprecated
   public static final String[] DEFAULT_AUTHORITATIVE_PATH = {};
 
   /**
@@ -1296,37 +1343,44 @@ public final class Constants {
 
   /**
    * Policy for directory markers.
-   * This is a new feature of HADOOP-13230 which addresses
-   * some scale, performance and permissions issues -but
-   * at the risk of backwards compatibility.
+   * No longer supported as "keep" is the sole policy.
    */
+  @Deprecated
   public static final String DIRECTORY_MARKER_POLICY =
       "fs.s3a.directory.marker.retention";
 
   /**
-   * Delete directory markers. This is the backwards compatible option.
+   * Delete directory markers.
+   * No longer supported as "keep" is the sole policy.
    * Value: {@value}.
    */
+  @Deprecated
   public static final String DIRECTORY_MARKER_POLICY_DELETE =
       "delete";
 
   /**
    * Retain directory markers.
+   * No longer needed, so marked as deprecated to flag usages.
    * Value: {@value}.
    */
+  @Deprecated
   public static final String DIRECTORY_MARKER_POLICY_KEEP =
       "keep";
 
   /**
    * Retain directory markers in authoritative directory trees only.
+   * No longer required as "keep" is the sole policy.
    * Value: {@value}.
    */
+  @Deprecated
   public static final String DIRECTORY_MARKER_POLICY_AUTHORITATIVE =
       "authoritative";
 
   /**
    * Default retention policy: {@value}.
+   * No longer required as "keep" is the sole policy.
    */
+  @Deprecated
   public static final String DEFAULT_DIRECTORY_MARKER_POLICY =
       DIRECTORY_MARKER_POLICY_KEEP;
 
@@ -1334,7 +1388,7 @@ public final class Constants {
   /**
    * {@code PathCapabilities} probe to verify that an S3A Filesystem
    * has the changes needed to safely work with buckets where
-   * directoy markers have not been deleted.
+   * directory markers have not been deleted.
    * Value: {@value}.
    */
   public static final String STORE_CAPABILITY_DIRECTORY_MARKER_AWARE
@@ -1351,16 +1405,20 @@ public final class Constants {
   /**
    * {@code PathCapabilities} probe to indicate that the filesystem
    * deletes directory markers.
+   * Always false.
    * Value: {@value}.
    */
+  @Deprecated
   public static final String STORE_CAPABILITY_DIRECTORY_MARKER_POLICY_DELETE
       = "fs.s3a.capability.directory.marker.policy.delete";
 
   /**
    * {@code PathCapabilities} probe to indicate that the filesystem
    * keeps directory markers in authoritative paths only.
+   * This probe always returns false.
    * Value: {@value}.
    */
+  @Deprecated
   public static final String
       STORE_CAPABILITY_DIRECTORY_MARKER_POLICY_AUTHORITATIVE =
       "fs.s3a.capability.directory.marker.policy.authoritative";
@@ -1368,6 +1426,7 @@ public final class Constants {
   /**
    * {@code PathCapabilities} probe to indicate that a path
    * keeps directory markers.
+   * This probe always returns true.
    * Value: {@value}.
    */
   public static final String STORE_CAPABILITY_DIRECTORY_MARKER_ACTION_KEEP
@@ -1376,6 +1435,7 @@ public final class Constants {
   /**
    * {@code PathCapabilities} probe to indicate that a path
    * deletes directory markers.
+   * This probe always returns false.
    * Value: {@value}.
    */
   public static final String STORE_CAPABILITY_DIRECTORY_MARKER_ACTION_DELETE
