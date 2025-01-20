@@ -50,8 +50,7 @@
         </file>
       </activation>
       <properties>
-        <!-- <maven.test.skip>false</maven.test.skip> -->
-        <skipITs>false</skipITs>
+        <maven.test.skip>false</maven.test.skip>
       </properties>
     </profile>
   </profiles>
