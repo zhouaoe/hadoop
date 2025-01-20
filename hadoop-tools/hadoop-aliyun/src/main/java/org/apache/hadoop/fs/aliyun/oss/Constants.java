@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.fs.aliyun.oss;
 
+import org.apache.hadoop.fs.aliyun.oss.DefaultOSSClientFactory;
 import com.aliyun.oss.common.utils.VersionInfoUtils;
 
 /**
@@ -210,5 +211,31 @@ public final class Constants {
 
   public static final String LIST_VERSION = "fs.oss.list.version";
 
+  /**
+   * new methods to reduce QPS
+   */
+  public static final String FS_OSS_FS_REDUCE_QPS = "fs.oss.fs.reduce.qps";
+  /**
+   * new methods to reduce QPS : {@value}.
+   */
+  public static final boolean FS_OSS_FS_REDUCE_QPS_DEFALUT_VALUE = true;
+
   public static final int DEFAULT_LIST_VERSION = 2;
+
+    //Client Factory implementation class: {@value}.
+  public static final String OSS_CLIENT_FACTORY_IMPL =
+  "fs.oss.client.factory.impl";
+
+    /**
+   * Default factory:
+   * {@code org.apache.hadoop.fs.oss.DefaultS3ClientFactory}.
+   */
+  public static final Class<? extends OSSClientFactory> DEFAULT_OSS_CLIENT_FACTORY_IMPL = DefaultOSSClientFactory.class;
+
+    /**
+   * Default factory:
+   * {@code org.apache.hadoop.fs.oss.DefaultOSSClientFactory}.
+   */
+  public static final String FS_OSS_PUT_IF_NOT_EXIST_KEY = "fs.oss.put_if_not_exist";
+  public static final boolean FS_OSS_PUT_IF_NOT_EXIST_DEFAULT = false;
 }

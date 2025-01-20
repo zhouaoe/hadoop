@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * API version-independent container for OSS List responses.
@@ -40,6 +41,7 @@ public final class OSSListResult {
 
   /**
    * Restricted constructors to ensure v1 or v2, not both.
+   * 
    * @param result v1 result
    * @return new list result container
    */
@@ -49,6 +51,7 @@ public final class OSSListResult {
 
   /**
    * Restricted constructors to ensure v1 or v2, not both.
+   * 
    * @param result v2 result
    * @return new list result container
    */
@@ -58,6 +61,7 @@ public final class OSSListResult {
 
   /**
    * Is this a v1 API result or v2?
+   * 
    * @return true if v1, false if v2
    */
   public boolean isV1() {
@@ -98,6 +102,7 @@ public final class OSSListResult {
 
   /**
    * Dump the result at debug level.
+   * 
    * @param log log to use
    */
   public void logAtDebug(Logger log) {
@@ -111,5 +116,30 @@ public final class OSSListResult {
     for (String prefix : prefixes) {
       log.debug("Prefix: {}", prefix);
     }
+  }
+
+  public boolean representsEmptyDirectory(final String dirKey) {
+    List<String> keys = getObjectSummaries().stream()
+        .map(OSSObjectSummary::getKey)
+        .collect(Collectors.toList());
+    return keys.size() == 1 && keys.contains(dirKey)
+        && getCommonPrefixes().isEmpty();
+  }
+
+  public String getListResultContent() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(getObjectSummaries().stream()
+        .map(ossObjectSummary -> {
+          System.out.println(ossObjectSummary.getBucketName());
+          System.out.println(ossObjectSummary.getKey());
+          return ossObjectSummary.getKey();
+        })
+        .collect(Collectors.joining(",", "OSSObjectSummary: ", "")));
+
+        sb.append(getCommonPrefixes().stream()
+        .map(prefix -> prefix)
+        .collect(Collectors.joining(",", "CommonPrefixes: ", "")));
+
+    return sb.toString();
   }
 }

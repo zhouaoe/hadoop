@@ -55,6 +55,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.VersionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,9 +74,10 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import com.aliyun.oss.OSSErrorCode;
 
 import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
-
+import org.apache.hadoop.classification.VisibleForTesting;
 /**
  * Core implementation of Aliyun OSS Filesystem for Hadoop.
  * Provides the bridging logic between Hadoop's abstract filesystem and
@@ -154,7 +156,8 @@ public class AliyunOSSFileSystemStore {
     }
     CredentialsProvider provider =
         AliyunOSSUtils.getCredentialsProvider(uri, conf);
-    ossClient = new OSSClient(endPoint, provider, clientConf);
+    // ossClient = new OSSClient(endPoint, provider, clientConf);
+    ossClient = GenerateOssClient(endPoint, provider, clientConf, conf);
     uploadPartSize = AliyunOSSUtils.getMultipartSizeProperty(conf,
         MULTIPART_UPLOAD_PART_SIZE_KEY, MULTIPART_UPLOAD_PART_SIZE_DEFAULT);
 
@@ -178,6 +181,16 @@ public class AliyunOSSFileSystemStore {
           "version 2", listVersion);
     }
     useListV1 = (listVersion == 1);
+  }
+
+  protected OSSClient GenerateOssClient(String endPoint, CredentialsProvider provider, ClientConfiguration clientConf,
+      Configuration conf) throws IOException {
+    Class<? extends OSSClientFactory> ossClientFactoryClass = conf.getClass(
+        OSS_CLIENT_FACTORY_IMPL, DEFAULT_OSS_CLIENT_FACTORY_IMPL,
+        OSSClientFactory.class);
+    OSSClientFactory clientFactory = ReflectionUtils.newInstance(ossClientFactoryClass, conf);
+    OSSClient ossClient = clientFactory.createOSSClient(endPoint, provider, clientConf);
+    return ossClient;
   }
 
   /**
@@ -280,6 +293,33 @@ public class AliyunOSSFileSystemStore {
     }
   }
 
+    /**
+     * Return metadata of a given object key.
+     * In cases where the QPS is too high, OSS will return a 5xx error. Therefore,
+     * only an explicit 'Not Found' response can be considered as non-existent;
+     * other types of exceptions need to be thrown or retried.
+     * 
+     * @param key object key.
+     * @return return null if key does not exist.
+     */
+  public ObjectMetadata getObjectMetadataV2(String key) {
+    try {
+      GenericRequest request = new GenericRequest(bucketName, key);
+      request.setLogEnabled(false);
+      ObjectMetadata objectMeta = ossClient.getObjectMetadata(request);
+      statistics.incrementReadOps(1);
+      return objectMeta;
+    } catch (OSSException osse) {
+      if (!StringUtils.equals(osse.getErrorCode(), OSSErrorCode.NO_SUCH_KEY)) {
+        LOG.debug("Exception thrown when get object meta: "
+            + key + ", exception: " + osse);
+        throw osse;
+      }
+      // non-existent
+      return null;
+    }
+  }
+
   /**
    * Upload an empty file as an OSS object, using single upload.
    *
@@ -295,6 +335,37 @@ public class AliyunOSSFileSystemStore {
       ossClient.putObject(bucketName, key, in, dirMeta);
       statistics.incrementWriteOps(1);
     } finally {
+      in.close();
+    }
+  }
+
+  /**
+   * Upload an empty file as an OSS object, using single upload.
+   *
+   * @param key object key.
+   * @throws IOException if failed to upload object.
+   */
+  public void storeEmptyFileIfNecessary(String key) throws IOException {
+    ObjectMetadata dirMeta = new ObjectMetadata();
+    
+    byte[] buffer = new byte[0];
+    ByteArrayInputStream in = new ByteArrayInputStream(buffer);
+    dirMeta.setContentLength(0);
+    dirMeta.setHeader("x-oss-forbid-overwrite", "true");
+    try {
+      ossClient.putObject(bucketName, key, in, dirMeta);
+      statistics.incrementWriteOps(1);
+    } catch (OSSException osse) {
+      if (StringUtils.equals(osse.getErrorCode(),OSSErrorCode.FILE_ALREADY_EXISTS)) {
+        statistics.incrementWriteOps(1);
+        LOG.debug("Object already exists, ignore it: " + key);
+      } else {
+        LOG.debug("Exception thrown when get object meta: "
+            + key + ", exception: " + osse);
+        throw osse;
+      }
+    }
+    finally {
       in.close();
     }
   }
@@ -771,5 +842,10 @@ public class AliyunOSSFileSystemStore {
         return -1;
       }
     }
+  }
+
+  @VisibleForTesting
+  protected OSSClient getOSSClient() {
+    return ossClient;
   }
 }

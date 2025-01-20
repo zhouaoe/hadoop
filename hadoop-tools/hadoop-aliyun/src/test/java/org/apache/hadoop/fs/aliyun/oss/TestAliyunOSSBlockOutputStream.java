@@ -48,6 +48,7 @@ import static org.apache.hadoop.fs.aliyun.oss.Constants.FAST_UPLOAD_BYTEBUFFER_D
 import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_DEFAULT;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_KEY;
 import static org.apache.hadoop.fs.contract.ContractTestUtils.IO_CHUNK_BUFFER_SIZE;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_PUT_IF_NOT_EXIST_KEY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -77,6 +78,8 @@ public class TestAliyunOSSBlockOutputStream {
     conf.setInt(Constants.UPLOAD_ACTIVE_BLOCKS_KEY, 20);
     conf.setLong(FAST_UPLOAD_BUFFER_MEMORY_LIMIT, MEMORY_LIMIT);
     fs = AliyunOSSTestUtils.createTestFileSystem(conf);
+    Long downloadPartSize = conf.getLong("fs.oss.multipart.download.size",
+   10);
   }
 
   @After
@@ -115,24 +118,61 @@ public class TestAliyunOSSBlockOutputStream {
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(7, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(3, statistics.getWriteOps());
+    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
     assertEquals(14, statistics.getReadOps());
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(6, statistics.getWriteOps());
+    assertEquals(5, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 0
+
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size + 1);
     assertEquals(22, statistics.getReadOps());
     assertEquals(3 * size, statistics.getBytesRead());
-    assertEquals(10, statistics.getWriteOps());
+    assertEquals(8, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 0
     assertEquals(3 * size, statistics.getBytesWritten());
     bufferShouldReleased();
   }
+
+  @Test
+  public void testCreateFakeDirectoryIfNecessary() throws IOException {
+
+    Configuration conf = new Configuration();
+    conf.setInt(MULTIPART_UPLOAD_PART_SIZE_KEY, PART_SIZE);
+    conf.setInt(IO_CHUNK_BUFFER_SIZE,
+        conf.getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 0));
+    conf.setInt(Constants.UPLOAD_ACTIVE_BLOCKS_KEY, 20);
+    conf.setLong(FAST_UPLOAD_BUFFER_MEMORY_LIMIT, MEMORY_LIMIT);
+    conf.setBoolean(FS_OSS_PUT_IF_NOT_EXIST_KEY,true);    
+    fs = AliyunOSSTestUtils.createTestFileSystem(conf);
+    Long downloadPartSize = conf.getLong("fs.oss.multipart.download.size",
+   10);
+
+
+    FileSystem.clearStatistics();
+    long size = 1024 * 1024;
+    FileSystem.Statistics statistics =
+        FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
+    ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
+    assertEquals(6, statistics.getReadOps());
+    assertEquals(size - 1, statistics.getBytesRead());
+    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
+    assertEquals(size - 1, statistics.getBytesWritten());
+    bufferShouldReleased();
+
+    ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
+    assertEquals(12, statistics.getReadOps()); //reduce 2 query ops
+    assertEquals(2 * size - 1, statistics.getBytesRead());
+    assertEquals(6, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 1
+
+    assertEquals(2 * size - 1, statistics.getBytesWritten());
+    bufferShouldReleased();
+  }
+
 
   @Test
   public void testMultiPartUpload() throws IOException {
@@ -143,21 +183,21 @@ public class TestAliyunOSSBlockOutputStream {
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(17, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(8, statistics.getWriteOps());
+    assertEquals(8, statistics.getWriteOps());  //Reduced a create fake directory write operation.
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
     assertEquals(34, statistics.getReadOps());
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(16, statistics.getWriteOps());
+    assertEquals(15, statistics.getWriteOps()); //Reduced a create fake directory write operation.
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size + 1);
     assertEquals(52, statistics.getReadOps());
     assertEquals(3 * size, statistics.getBytesRead());
-    assertEquals(25, statistics.getWriteOps());
+    assertEquals(23, statistics.getWriteOps()); //Reduced a create fake directory write operation.
     assertEquals(3 * size, statistics.getBytesWritten());
     bufferShouldReleased();
   }

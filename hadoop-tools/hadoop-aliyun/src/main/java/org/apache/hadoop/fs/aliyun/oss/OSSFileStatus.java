@@ -29,10 +29,33 @@ import org.apache.hadoop.fs.Path;
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class OSSFileStatus extends FileStatus {
+  private AliyunOSSDirEmptyFlag emptyFlag;
+
   public OSSFileStatus(long length, boolean isdir, int blockReplication,
       long blocksize, long modTime, Path path, String user) {
     super(length, isdir, blockReplication, blocksize, modTime, path);
     setOwner(user);
     setGroup(user);
+    setEmptyFlag(AliyunOSSDirEmptyFlag.UNKNOWN);
   }
+
+  public OSSFileStatus(AliyunOSSDirEmptyFlag emptyStatus, long length, int blockReplication,
+      long blocksize, long modTime, Path path, String user) {
+    //If emptystatus is set, this is definitely a directory
+    super(length, true, blockReplication, blocksize, modTime, path);
+    setOwner(user);
+    setGroup(user);
+    setEmptyFlag(emptyStatus);
+  }
+
+  public AliyunOSSDirEmptyFlag getEmptyFlag()
+  {
+    return emptyFlag;
+  }
+
+  public AliyunOSSDirEmptyFlag setEmptyFlag(AliyunOSSDirEmptyFlag status)
+  {
+    return emptyFlag = status;
+  }
+
 }
