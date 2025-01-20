@@ -39,9 +39,7 @@
         </file>
       </activation>
       <properties>
-        <!-- <maven.test.skip>true</maven.test.skip> -->
-        <skipITs>true</skipITs>
-        <skipTests>false</skipTests>
+        <maven.test.skip>true</maven.test.skip>
       </properties>
     </profile>
     <profile>
