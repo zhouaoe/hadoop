@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,45 +18,22 @@
 
 package org.apache.hadoop.fs.aliyun.oss;
 
-import org.apache.hadoop.fs.Path;
-
-import java.io.IOException;
-import java.security.Permissions;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.SimpleTimeZone;
-import java.util.logging.Logger;
-import java.util.Date;
-
-import org.apache.hadoop.fs.aliyun.oss.AliyunOSSFileSystem;
-import org.apache.hadoop.fs.aliyun.oss.OSS;
-import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.util.Progressable;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import org.mockito.Mockito;
-import org.mockito.ArgumentMatcher;
-import static org.mockito.ArgumentMatchers.argThat;
-
-import com.aliyun.oss.model.HeadObjectRequest;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.model.GenericRequest;
-import com.aliyun.oss.model.ObjectListing;
-import com.aliyun.oss.model.OSSObjectSummary;
-import com.aliyun.oss.model.ListObjectsV2Request;
-import com.aliyun.oss.model.ListObjectsRequest;
-import com.aliyun.oss.model.ListObjectsV2Result;
 import com.aliyun.oss.model.ObjectMetadata;
+import java.util.ArrayList;
+import java.util.Arrays;
+import org.junit.Test;
+import org.mockito.ArgumentMatcher;
+import org.mockito.Mockito;
+
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.util.Progressable;
+
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
 
 public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest {
   // private static final Logger LOG =
@@ -75,13 +52,13 @@ public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest
     boolean overwrite = true;
     Progressable progress = null;
 
-
     Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key))))
         .thenThrow(NOT_FOUND);
     Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir))))
         .thenThrow(NOT_FOUND);
     setMockList(listVersion, BUCKET, "", false, keyDir, 100, new ArrayList<>(), new ArrayList<>());
-    FSDataOutputStream outstream = fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
+    FSDataOutputStream outstream =
+        fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
     System.out.println("success testCreate");
     assertTrue(outstream != null);
     checkGetObjectMetadataCalled(0, requestMatcher(BUCKET, key));
@@ -105,11 +82,14 @@ public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest
 
     Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, workingPrefix + key))))
         .thenThrow(NOT_FOUND);
-    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, workingPrefix + keyDir))))
+    Mockito.when(
+            ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, workingPrefix + keyDir))))
         .thenThrow(NOT_FOUND);
 
-    setMockList(listVersion, BUCKET, "", false, workingPrefix + keyDir, 100, new ArrayList<>(), new ArrayList<>());
-    FSDataOutputStream outstream = fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
+    setMockList(listVersion, BUCKET, "", false, workingPrefix + keyDir, 100, new ArrayList<>(),
+        new ArrayList<>());
+    FSDataOutputStream outstream =
+        fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
     System.out.println("success testCreate");
     assertTrue(outstream != null);
     checkGetObjectMetadataCalled(0, requestMatcher(BUCKET, key));
@@ -139,13 +119,16 @@ public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest
     Mockito.when(ossClient.getObjectMetadata(argThat(matcher))).thenReturn(meta);
 
     setMockList(listVersion, BUCKET, "", false, keyDir, 100, new ArrayList<>(), new ArrayList<>());
-    FSDataOutputStream outstream = fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
+    FSDataOutputStream outstream =
+        fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
     System.out.println("success testCreate");
     assertTrue(outstream != null);
 
     // 检查 ossClient.getObjectMetadata 的访问次数
-    Mockito.verify(ossClient, Mockito.times(0)).getObjectMetadata(argThat(requestMatcher(BUCKET, key)));
-    Mockito.verify(ossClient, Mockito.times(1)).getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir)));
+    Mockito.verify(ossClient, Mockito.times(0))
+        .getObjectMetadata(argThat(requestMatcher(BUCKET, key)));
+    Mockito.verify(ossClient, Mockito.times(1))
+        .getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir)));
     // overwrite == true ,Head operation should not be called
     checkGetObjectMetadataCalled(0, requestMatcher(BUCKET, key));
     checkGetObjectMetadataCalled(1, requestMatcher(BUCKET, keyDir));
@@ -166,11 +149,12 @@ public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest
 
     ObjectMetadata meta = new ObjectMetadata();
     meta.setLastModified(parseIso8601Date("2017-07-07T08:08:08.008Z"));
-    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key)))).thenReturn(meta);
+    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key))))
+        .thenReturn(meta);
     setMockList(listVersion, BUCKET, "", false, keyDir, 100, new ArrayList<>(), new ArrayList<>());
     try {
-      FSDataOutputStream outstream = fs.create(path, permission, overwrite, bufferSize, replication, blockSize,
-          progress);
+      FSDataOutputStream outstream =
+          fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
     } catch (org.apache.hadoop.fs.FileAlreadyExistsException e) {
       System.out.println(e.getMessage());
       assertTrue(e.getMessage().contains("/a.txt already exists"));
@@ -196,13 +180,15 @@ public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest
     ObjectMetadata meta = new ObjectMetadata();
     meta.setLastModified(parseIso8601Date("2017-07-07T08:08:08.008Z"));
     OSSClient ossMockClient = getOSSClient();
-    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key)))).thenThrow(NOT_FOUND);
-    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir)))).thenReturn(meta);
+    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key))))
+        .thenThrow(NOT_FOUND);
+    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir))))
+        .thenReturn(meta);
     setMockList(listVersion, BUCKET, "", false, keyDir, 100, new ArrayList<>(), new ArrayList<>());
 
     try {
-      FSDataOutputStream outstream = fs.create(path, permission, overwrite, bufferSize, replication, blockSize,
-          progress);
+      FSDataOutputStream outstream =
+          fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
     } catch (org.apache.hadoop.fs.FileAlreadyExistsException e) {
       System.out.println(e.getMessage());
       assertTrue(e.getMessage().contains("/a.txt is a directory"));
@@ -223,13 +209,16 @@ public class TestAliyunOSSFileSystemCreateFileListV2 extends AbstractOSSMockTest
     boolean overwrite = true;
     Progressable progress = null;
 
-    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key)))).thenThrow(NOT_FOUND);
-    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir)))).thenThrow(NOT_FOUND);
-    setMockList(listVersion, BUCKET, "", false, keyDir, 100, Arrays.asList("b.txt"), new ArrayList<>());
+    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, key))))
+        .thenThrow(NOT_FOUND);
+    Mockito.when(ossClient.getObjectMetadata(argThat(requestMatcher(BUCKET, keyDir))))
+        .thenThrow(NOT_FOUND);
+    setMockList(listVersion, BUCKET, "", false, keyDir, 100, Arrays.asList("b.txt"),
+        new ArrayList<>());
 
     try {
-      FSDataOutputStream outstream = fs.create(path, permission, overwrite, bufferSize, replication, blockSize,
-          progress);
+      FSDataOutputStream outstream =
+          fs.create(path, permission, overwrite, bufferSize, replication, blockSize, progress);
     } catch (org.apache.hadoop.fs.FileAlreadyExistsException e) {
       System.out.println(e.getMessage());
       assertTrue(e.getMessage().contains("/a.txt is a directory"));

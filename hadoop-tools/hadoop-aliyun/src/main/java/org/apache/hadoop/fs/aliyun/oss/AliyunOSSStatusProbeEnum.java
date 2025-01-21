@@ -16,8 +16,7 @@
  * limitations under the License.
  */
 
- 
- package org.apache.hadoop.fs.aliyun.oss;
+package org.apache.hadoop.fs.aliyun.oss;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -30,32 +29,42 @@ import org.apache.hadoop.classification.InterfaceAudience;
 @InterfaceAudience.Private
 public enum AliyunOSSStatusProbeEnum {
 
-  /** The actual path. */
+  /**
+   * The actual path.
+   */
   Head,
-  /** HEAD of the path + /. */
+  /**
+   * HEAD of the path + /.
+   */
   DirMarker,
-  /** LIST under the path. */
+  /**
+   * LIST under the path.
+   */
   List;
 
-  /** Look for files and directories. */
-  public static final Set<AliyunOSSStatusProbeEnum> ALL =
-      EnumSet.of(Head, DirMarker, List);
+  /**
+   * Look for files and directories.
+   */
+  public static final Set<AliyunOSSStatusProbeEnum> ALL = EnumSet.of(Head, DirMarker, List);
 
-  /** We only want the HEAD. */
-  public static final Set<AliyunOSSStatusProbeEnum> HEAD_ONLY =
-      EnumSet.of(Head);
+  /**
+   * We only want the HEAD.
+   */
+  public static final Set<AliyunOSSStatusProbeEnum> HEAD_ONLY = EnumSet.of(Head);
 
-  /** List operation only. */
-  public static final Set<AliyunOSSStatusProbeEnum> LIST_ONLY =
-      EnumSet.of(List);
+  /**
+   * List operation only.
+   */
+  public static final Set<AliyunOSSStatusProbeEnum> LIST_ONLY = EnumSet.of(List);
 
-  /** Look for files. */
-  public static final Set<AliyunOSSStatusProbeEnum> FILE =
-      HEAD_ONLY;
+  /**
+   * Look for files.
+   */
+  public static final Set<AliyunOSSStatusProbeEnum> FILE = HEAD_ONLY;
 
   /**
    * look for directories.
-   *
+   * <p>
    * The cost of list is much higher than Head DirMarker. We try to perform Head
    * DirMarker checks before listing.
    */

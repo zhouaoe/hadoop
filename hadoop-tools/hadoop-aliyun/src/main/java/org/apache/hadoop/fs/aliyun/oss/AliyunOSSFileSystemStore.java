@@ -21,6 +21,7 @@ package org.apache.hadoop.fs.aliyun.oss;
 import com.aliyun.oss.ClientConfiguration;
 import com.aliyun.oss.ClientException;
 import com.aliyun.oss.OSSClient;
+import com.aliyun.oss.OSSErrorCode;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.common.auth.CredentialsProvider;
 import com.aliyun.oss.common.comm.Protocol;
@@ -37,29 +38,14 @@ import com.aliyun.oss.model.InitiateMultipartUploadRequest;
 import com.aliyun.oss.model.InitiateMultipartUploadResult;
 import com.aliyun.oss.model.ListObjectsRequest;
 import com.aliyun.oss.model.ListObjectsV2Request;
-import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.OSSObjectSummary;
+import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.PartETag;
 import com.aliyun.oss.model.PutObjectResult;
 import com.aliyun.oss.model.UploadPartCopyRequest;
 import com.aliyun.oss.model.UploadPartCopyResult;
 import com.aliyun.oss.model.UploadPartRequest;
 import com.aliyun.oss.model.UploadPartResult;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.BlockLocation;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.hadoop.util.VersionInfo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -74,10 +60,54 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
-import com.aliyun.oss.OSSErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.classification.VisibleForTesting;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.VersionInfo;
+
+import static org.apache.hadoop.fs.aliyun.oss.Constants.CANNED_ACL_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.CANNED_ACL_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.DEFAULT_LIST_VERSION;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.DEFAULT_OSS_CLIENT_FACTORY_IMPL;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.ENDPOINT_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.ESTABLISH_TIMEOUT_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.ESTABLISH_TIMEOUT_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.LIST_VERSION;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAXIMUM_CONNECTIONS_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAXIMUM_CONNECTIONS_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAX_ERROR_RETRIES_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAX_ERROR_RETRIES_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAX_PAGING_KEYS_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAX_PAGING_KEYS_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.OSS_CLIENT_FACTORY_IMPL;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.PROXY_DOMAIN_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.PROXY_HOST_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.PROXY_PASSWORD_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.PROXY_PORT_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.PROXY_USERNAME_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.PROXY_WORKSTATION_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.SECURE_CONNECTIONS_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.SECURE_CONNECTIONS_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.SERVER_SIDE_ENCRYPTION_ALGORITHM_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.SOCKET_TIMEOUT_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.SOCKET_TIMEOUT_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.USER_AGENT_PREFIX;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.USER_AGENT_PREFIX_DEFAULT;
+
 /**
  * Core implementation of Aliyun OSS Filesystem for Hadoop.
  * Provides the bridging logic between Hadoop's abstract filesystem and
@@ -298,7 +328,7 @@ public class AliyunOSSFileSystemStore {
      * In cases where the QPS is too high, OSS will return a 5xx error. Therefore,
      * only an explicit 'Not Found' response can be considered as non-existent;
      * other types of exceptions need to be thrown or retried.
-     * 
+     *
      * @param key object key.
      * @return return null if key does not exist.
      */
@@ -347,7 +377,6 @@ public class AliyunOSSFileSystemStore {
    */
   public void storeEmptyFileIfNecessary(String key) throws IOException {
     ObjectMetadata dirMeta = new ObjectMetadata();
-    
     byte[] buffer = new byte[0];
     ByteArrayInputStream in = new ByteArrayInputStream(buffer);
     dirMeta.setContentLength(0);
@@ -356,16 +385,14 @@ public class AliyunOSSFileSystemStore {
       ossClient.putObject(bucketName, key, in, dirMeta);
       statistics.incrementWriteOps(1);
     } catch (OSSException osse) {
-      if (StringUtils.equals(osse.getErrorCode(),OSSErrorCode.FILE_ALREADY_EXISTS)) {
+      if (StringUtils.equals(osse.getErrorCode(), OSSErrorCode.FILE_ALREADY_EXISTS)) {
         statistics.incrementWriteOps(1);
         LOG.debug("Object already exists, ignore it: " + key);
       } else {
-        LOG.debug("Exception thrown when get object meta: "
-            + key + ", exception: " + osse);
+        LOG.debug("Exception thrown when get object meta: " + key + ", exception: " + osse);
         throw osse;
       }
-    }
-    finally {
+    } finally {
       in.close();
     }
   }

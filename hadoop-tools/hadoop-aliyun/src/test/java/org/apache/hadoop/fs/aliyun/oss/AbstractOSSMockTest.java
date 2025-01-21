@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,12 +19,15 @@
 package org.apache.hadoop.fs.aliyun.oss;
 
 import com.aliyun.oss.OSSClient;
-import com.aliyun.oss.OSSClientBuilder;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Before;
-import org.junit.After;
-import org.junit.Rule;
-import org.junit.rules.ExpectedException;
+import com.aliyun.oss.OSSErrorCode;
+import com.aliyun.oss.OSSException;
+import com.aliyun.oss.ServiceException;
+import com.aliyun.oss.model.GenericRequest;
+import com.aliyun.oss.model.ListObjectsRequest;
+import com.aliyun.oss.model.ListObjectsV2Request;
+import com.aliyun.oss.model.ListObjectsV2Result;
+import com.aliyun.oss.model.OSSObjectSummary;
+import com.aliyun.oss.model.ObjectListing;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -33,24 +36,20 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.SimpleTimeZone;
-
-import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
-import com.aliyun.oss.ServiceException;
-import com.aliyun.oss.OSSErrorCode;
-import com.aliyun.oss.OSSException;
-
-import com.aliyun.oss.model.HeadObjectRequest;
-import com.aliyun.oss.OSSClient;
-import com.aliyun.oss.model.GenericRequest;
-import com.aliyun.oss.model.ObjectListing;
-import com.aliyun.oss.model.OSSObjectSummary;
-import com.aliyun.oss.model.ListObjectsV2Request;
-import com.aliyun.oss.model.ListObjectsRequest;
-import com.aliyun.oss.model.ListObjectsV2Result;
-import com.aliyun.oss.model.ObjectMetadata;
-
-import org.mockito.Mockito;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentMatcher;
+import org.mockito.Mockito;
+
+import org.apache.hadoop.conf.Configuration;
+
+import static org.apache.hadoop.fs.aliyun.oss.Constants.ACCESS_KEY_ID;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.ACCESS_KEY_SECRET;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.ENDPOINT_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.OSS_CLIENT_FACTORY_IMPL;
 import static org.mockito.ArgumentMatchers.argThat;
 
 public abstract class AbstractOSSMockTest {
@@ -65,9 +64,9 @@ public abstract class AbstractOSSMockTest {
   protected static final int LIST_V1 = 1;
   protected static final int LIST_V2 = 2;
 
-
-  protected static final ServiceException NOT_FOUND = new OSSException("Not Found", OSSErrorCode.NO_SUCH_KEY,
-      "requestIdtest", "hostIdtest", "headertest", "resourceTypetest", "methodTest");
+  protected static final ServiceException NOT_FOUND =
+      new OSSException("Not Found", OSSErrorCode.NO_SUCH_KEY, "requestIdtest", "hostIdtest",
+          "headertest", "resourceTypetest", "methodTest");
 
   protected Configuration conf;
 
@@ -92,8 +91,7 @@ public abstract class AbstractOSSMockTest {
 
   public void createConfiguration() {
     this.conf = new Configuration();
-    conf.setClass(OSS_CLIENT_FACTORY_IMPL, MockOSSClientFactory.class,
-        OSSClientFactory.class);
+    conf.setClass(OSS_CLIENT_FACTORY_IMPL, MockOSSClientFactory.class, OSSClientFactory.class);
   }
 
   protected void initFs() throws Exception {
@@ -116,17 +114,19 @@ public abstract class AbstractOSSMockTest {
     return ossClient;
   }
 
-  protected void setMockList(int listVersion, String bucket, String delimiter, boolean isTruncated, String prefix,
-      int maxKeys, List<String> keys, List<String> commonPrefixes) throws Exception {
+  protected void setMockList(int listVersion, String bucket, String delimiter, boolean isTruncated,
+      String prefix, int maxKeys, List<String> keys, List<String> commonPrefixes) throws Exception {
     if (listVersion == 1) {
       ObjectListing listV1Res = new ObjectListing();
-      generatListResult(listV1Res, BUCKET, delimiter, isTruncated, prefix, 100, keys, commonPrefixes);
+      generatListResult(listV1Res, BUCKET, delimiter, isTruncated, prefix, 100, keys,
+          commonPrefixes);
       Mockito.when(ossClient.listObjects(argThat(requestListV1Matcher(bucket, prefix))))
           .thenReturn(listV1Res);
       return;
     } else if (listVersion == 2) {
       ListObjectsV2Result listV2Res = new ListObjectsV2Result();
-      generatListResult(listV2Res, bucket, delimiter, isTruncated, prefix, 100, keys, commonPrefixes);
+      generatListResult(listV2Res, bucket, delimiter, isTruncated, prefix, 100, keys,
+          commonPrefixes);
       Mockito.when(ossClient.listObjectsV2(argThat(requestListV2Matcher(bucket, prefix))))
           .thenReturn(listV2Res);
       return;
@@ -135,11 +135,9 @@ public abstract class AbstractOSSMockTest {
     throw new RuntimeException("not support list version" + listVersion);
   }
 
-  protected ArgumentMatcher<GenericRequest> matchGetMetadataRequest(
-      String bucket, String key) {
-    return request -> request != null
-        && request.getBucketName().equals(bucket)
-        && request.getKey().equals(key);
+  protected ArgumentMatcher<GenericRequest> matchGetMetadataRequest(String bucket, String key) {
+    return request -> request != null && request.getBucketName().equals(bucket) && request.getKey()
+        .equals(key);
   }
 
   private ListObjectsV2Result getObjectAsListObjectsV2Result(Object obj) {
@@ -158,8 +156,9 @@ public abstract class AbstractOSSMockTest {
     }
   }
 
-  private void generatListResult(Object targetType, String bucket, String delimiter, boolean isTruncated, String prefix,
-      int maxKeys, List<String> keys, List<String> commonPrefixes) throws ParseException {
+  private void generatListResult(Object targetType, String bucket, String delimiter,
+      boolean isTruncated, String prefix, int maxKeys, List<String> keys,
+      List<String> commonPrefixes) throws ParseException {
     if (targetType instanceof ListObjectsV2Result) {
       ListObjectsV2Result listRes = getObjectAsListObjectsV2Result(targetType);
       listRes.setBucketName(bucket);
@@ -203,7 +202,8 @@ public abstract class AbstractOSSMockTest {
       }
       return;
     } else {
-      throw new IllegalArgumentException("Unsupported type for D: " + targetType.getClass().getName());
+      throw new IllegalArgumentException(
+          "Unsupported type for D: " + targetType.getClass().getName());
     }
   }
 
@@ -229,59 +229,39 @@ public abstract class AbstractOSSMockTest {
     return df;
   }
 
-  // protected ArgumentMatcher<GenericRequest> requestMatcher(String bucket,
-  // String key) {
-  // ArgumentMatcher<GenericRequest> matcher = new
-  // ArgumentMatcher<GenericRequest>() {
-  // @Override
-  // public boolean matches(GenericRequest request) {
-  // return request != null
-  // && request.getBucketName().equals(bucket)
-  // && request.getKey().equals(key);
-  // }
-  // };
-  // return matcher;
-  // }
-
   protected ArgumentMatcher<ListObjectsRequest> requestListV1Matcher(String bucket, String prefix) {
-    return request -> request != null
-        && request.getBucketName().equals(bucket)
+    return request -> request != null && request.getBucketName().equals(bucket)
         && request.getPrefix().equals(prefix);
   }
 
-  protected ArgumentMatcher<ListObjectsV2Request> requestListV2Matcher(String bucket, String prefix) {
-    return request -> request != null
-        && request.getBucketName().equals(bucket)
+  protected ArgumentMatcher<ListObjectsV2Request> requestListV2Matcher(String bucket,
+      String prefix) {
+    return request -> request != null && request.getBucketName().equals(bucket)
         && request.getPrefix().equals(prefix);
   }
-
-  // protected ArgumentMatcher<GenericRequest> requestMatcher(String bucket, String key) {
-  //   return request -> request != null
-  //       && request.getBucketName().equals(bucket)
-  //       && request.getKey().equals(key);
-  // }
 
   protected ArgumentMatcher<GenericRequest> requestMatcher(String bucket, String key) {
     return new ArgumentMatcher<GenericRequest>() {
       @Override
       public boolean matches(GenericRequest request) {
-        return request != null
-            && request.getBucketName().equals(bucket)
-            && request.getKey().equals(key);
+        return request != null && request.getBucketName().equals(bucket) && request.getKey()
+            .equals(key);
       }
     };
   }
- 
+
   protected void checkGetObjectMetadataCalled(int times, ArgumentMatcher<GenericRequest> matcher) {
     Mockito.verify(ossClient, Mockito.times(times)).getObjectMetadata(argThat(matcher));
   }
 
   protected void checkListCalled(int listVersion, int expectTimes, String bucket, String prefix) {
     if (listVersion == LIST_V1) {
-      Mockito.verify(ossClient, Mockito.times(expectTimes)).listObjects(argThat(requestListV1Matcher(bucket, prefix)));
+      Mockito.verify(ossClient, Mockito.times(expectTimes))
+          .listObjects(argThat(requestListV1Matcher(bucket, prefix)));
       return;
     } else if (listVersion == LIST_V2) {
-      Mockito.verify(ossClient, Mockito.times(expectTimes)).listObjectsV2(argThat(requestListV2Matcher(bucket,prefix)));
+      Mockito.verify(ossClient, Mockito.times(expectTimes))
+          .listObjectsV2(argThat(requestListV2Matcher(bucket, prefix)));
       return;
     }
     throw new RuntimeException("not support list version" + listVersion);

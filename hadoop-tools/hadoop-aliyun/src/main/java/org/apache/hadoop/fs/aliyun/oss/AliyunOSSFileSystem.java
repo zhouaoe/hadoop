@@ -18,26 +18,27 @@
 
 package org.apache.hadoop.fs.aliyun.oss;
 
+import org.apache.hadoop.thirdparty.com.google.common.util.concurrent.MoreExecutors;
+import com.aliyun.oss.model.OSSObjectSummary;
+import com.aliyun.oss.model.ObjectMetadata;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.security.Key;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.classification.VisibleForTesting;
-import org.apache.hadoop.fs.CommonPathCapabilities;
-import org.apache.hadoop.fs.aliyun.oss.statistics.BlockOutputStreamStatistics;
-import org.apache.hadoop.fs.aliyun.oss.statistics.impl.OutputStreamStatistics;
-import org.apache.hadoop.thirdparty.com.google.common.util.concurrent.MoreExecutors;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.CommonPathCapabilities;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -49,26 +50,31 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.PathIOException;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.aliyun.oss.statistics.BlockOutputStreamStatistics;
+import org.apache.hadoop.fs.aliyun.oss.statistics.impl.OutputStreamStatistics;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.BlockingThreadPoolExecutorService;
-import org.apache.hadoop.util.Preconditions;
 import org.apache.hadoop.util.Progressable;
-
-import com.aliyun.oss.OSSErrorCode;
-import com.aliyun.oss.OSSException;
-import com.aliyun.oss.model.OSSObjectSummary;
-import com.aliyun.oss.model.ObjectMetadata;
-
 import org.apache.hadoop.util.SemaphoredDelegatingExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.intOption;
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.longOption;
 import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.maybeAddTrailingSlash;
-import static org.apache.hadoop.fs.aliyun.oss.AliyunOSSUtils.objectRepresentsDirectory;
-import static org.apache.hadoop.fs.aliyun.oss.Constants.*;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.DEFAULT_FAST_UPLOAD_BUFFER;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FAST_UPLOAD_BUFFER;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_BLOCK_SIZE_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_BLOCK_SIZE_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_PUT_IF_NOT_EXIST_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_PUT_IF_NOT_EXIST_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.KEEPALIVE_TIME_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.KEEPALIVE_TIME_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAX_PAGING_KEYS_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MAX_PAGING_KEYS_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.UPLOAD_ACTIVE_BLOCKS_DEFAULT;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.UPLOAD_ACTIVE_BLOCKS_KEY;
 import static org.apache.hadoop.fs.impl.PathCapabilitiesSupport.validatePathCapabilityArgs;
 
 /**
@@ -191,18 +197,17 @@ public class AliyunOSSFileSystem extends FileSystem {
     }
   }
 
-  private boolean innerDelete(OSSFileStatus ossFileStatus, boolean recursive)
-      throws IOException {
+  private boolean innerDelete(OSSFileStatus ossFileStatus, boolean recursive) throws IOException {
     // get qulified path
     Path f = ossFileStatus.getPath();
     String p = f.toUri().getPath();
     FileStatus[] statuses;
     // indicating root directory "/".
     if (p.equals("/")) {
-      LOG.error("OSS: Cannot delete the root directory."
-          + " Path: {}. Recursive: {}",
+      LOG.error("OSS: Cannot delete the root directory." + " Path: {}. Recursive: {}",
           ossFileStatus.getPath(), recursive);
-      return false;
+      return rejectRootDirectoryDelete(ossFileStatus.getEmptyFlag() == AliyunOSSDirEmptyFlag.EMPTY,
+          recursive);
     }
 
     String key = pathToKey(f);
@@ -210,8 +215,8 @@ public class AliyunOSSFileSystem extends FileSystem {
       if (!recursive) {
         // Check whether it is an empty directory or not
         if (ossFileStatus.getEmptyFlag() != AliyunOSSDirEmptyFlag.EMPTY) {
-          throw new IOException("Cannot remove directory " + f +
-              ": It is not empty! it is not empty or unknown");
+          throw new IOException(
+              "Cannot remove directory " + f + ": It is not empty! it is not empty or unknown");
         } else {
           // Delete empty directory without '-r'
           key = AliyunOSSUtils.maybeAddTrailingSlash(key);
@@ -224,7 +229,7 @@ public class AliyunOSSFileSystem extends FileSystem {
       store.deleteObject(key);
     }
 
-    // to avoid creating fake directory for root directory  
+    // to avoid creating fake directory for root directory
     createFakeDirectoryIfNecessary(f.getParent());
     return true;
   }
@@ -605,85 +610,16 @@ public class AliyunOSSFileSystem extends FileSystem {
     // if f does not exist, there will throw a FileNotFoundException
     // if f is a file, fileStatus.isDirectory will be false
     // if f is a dir, throw a FileNotFoundException
-    final OSSFileStatus fileStatus = innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE, false);
+    final OSSFileStatus fileStatus =
+        innerOssGetFileStatus(path, AliyunOSSStatusProbeEnum.FILE, false);
     if (fileStatus.isDirectory()) {
-      throw new FileNotFoundException("Can't open " + path +
-          " because it is a directory");
+      throw new FileNotFoundException("Can't open " + path + " because it is a directory");
     }
 
     return new FSDataInputStream(new AliyunOSSInputStream(getConf(),
-        new SemaphoredDelegatingExecutor(
-            boundedThreadPool, maxReadAheadPartNumber, true),
-        maxReadAheadPartNumber, store, pathToKey(path), fileStatus.getLen(),
-        statistics));
+        new SemaphoredDelegatingExecutor(boundedThreadPool, maxReadAheadPartNumber, true),
+        maxReadAheadPartNumber, store, pathToKey(path), fileStatus.getLen(), statistics));
   }
-
-  // @Override
-  // public boolean rename(Path srcPath, Path dstPath) throws IOException {
-  //   if (srcPath.isRoot()) {
-  //     // Cannot rename root of file system
-  //     if (LOG.isDebugEnabled()) {
-  //       LOG.debug("Cannot rename the root of a filesystem");
-  //     }
-  //     return false;
-  //   }
-  //   Path parent = dstPath.getParent();
-  //   while (parent != null && !srcPath.equals(parent)) {
-  //     parent = parent.getParent();
-  //   }
-  //   if (parent != null) {
-  //     return false;
-  //   }
-  //   FileStatus srcStatus = getFileStatus(srcPath);
-  //   FileStatus dstStatus;
-  //   try {
-  //     dstStatus = getFileStatus(dstPath);
-  //   } catch (FileNotFoundException fnde) {
-  //     dstStatus = null;
-  //   }
-  //   if (dstStatus == null) {
-  //     // If dst doesn't exist, check whether dst dir exists or not
-  //     dstStatus = getFileStatus(dstPath.getParent());
-  //     if (!dstStatus.isDirectory()) {
-  //       throw new IOException(String.format(
-  //           "Failed to rename %s to %s, %s is a file", srcPath, dstPath,
-  //           dstPath.getParent()));
-  //     }
-  //   } else {
-  //     if (srcStatus.getPath().equals(dstStatus.getPath())) {
-  //       return !srcStatus.isDirectory();
-  //     } else if (dstStatus.isDirectory()) {
-  //       // If dst is a directory
-  //       dstPath = new Path(dstPath, srcPath.getName());
-  //       FileStatus[] statuses;
-  //       try {
-  //         statuses = listStatus(dstPath);
-  //       } catch (FileNotFoundException fnde) {
-  //         statuses = null;
-  //       }
-  //       if (statuses != null && statuses.length > 0) {
-  //         // If dst exists and not a directory / not empty
-  //         throw new FileAlreadyExistsException(String.format(
-  //             "Failed to rename %s to %s, file already exists or not empty!",
-  //             srcPath, dstPath));
-  //       }
-  //     } else {
-  //       // If dst is not a directory
-  //       throw new FileAlreadyExistsException(String.format(
-  //           "Failed to rename %s to %s, file already exists!", srcPath,
-  //           dstPath));
-  //     }
-  //   }
-
-  //   boolean succeed;
-  //   if (srcStatus.isDirectory()) {
-  //     succeed = copyDirectory(srcPath, dstPath);
-  //   } else {
-  //     succeed = copyFile(srcPath, srcStatus.getLen(), dstPath);
-  //   }
-
-  //   return srcPath.equals(dstPath) || (succeed && delete(srcPath, true));
-  // }
 
   @Override
   public boolean rename(Path srcPath, Path dstPath) throws IOException {
@@ -713,11 +649,12 @@ public class AliyunOSSFileSystem extends FileSystem {
     if (dstStatus == null) {
       // If dst doesn't exist, check whether dst dir exists or not
       // this raise a FileNotFoundException if dst dir does not exist
-      FileStatus dstParentStatus = innerOssGetFileStatus(dstPath.getParent(), AliyunOSSStatusProbeEnum.ALL, false);
+      FileStatus dstParentStatus =
+          innerOssGetFileStatus(dstPath.getParent(), AliyunOSSStatusProbeEnum.ALL, false);
       if (!dstParentStatus.isDirectory()) {
-        throw new IOException(String.format(
-            "Failed to rename %s to %s, %s is a file", srcPath, dstPath,
-            dstPath.getParent()));
+        throw new IOException(
+            String.format("Failed to rename %s to %s, %s is a file", srcPath, dstPath,
+                dstPath.getParent()));
       }
     } else {
       if (srcStatus.getPath().equals(dstStatus.getPath())) {
@@ -728,7 +665,8 @@ public class AliyunOSSFileSystem extends FileSystem {
 
         OSSFileStatus dstDirWithsrcPathStatus;
         try {
-          dstDirWithsrcPathStatus = innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
+          dstDirWithsrcPathStatus =
+              innerOssGetFileStatus(dstPath, AliyunOSSStatusProbeEnum.LIST_ONLY, true);
         } catch (FileNotFoundException fnde) {
           dstDirWithsrcPathStatus = null;
         }
@@ -736,15 +674,14 @@ public class AliyunOSSFileSystem extends FileSystem {
         if (dstDirWithsrcPathStatus != null
             && dstDirWithsrcPathStatus.getEmptyFlag() != AliyunOSSDirEmptyFlag.EMPTY) {
           // If dst exists and not a directory / not empty
-          throw new FileAlreadyExistsException(String.format(
-              "Failed to rename %s to %s, file already exists or not empty!",
-              srcPath, dstPath));
+          throw new FileAlreadyExistsException(
+              String.format("Failed to rename %s to %s, file already exists or not empty!", srcPath,
+                  dstPath));
         }
       } else {
         // If dst is not a directory
-        throw new FileAlreadyExistsException(String.format(
-            "Failed to rename %s to %s, file already exists!", srcPath,
-            dstPath));
+        throw new FileAlreadyExistsException(
+            String.format("Failed to rename %s to %s, file already exists!", srcPath, dstPath));
       }
     }
 
