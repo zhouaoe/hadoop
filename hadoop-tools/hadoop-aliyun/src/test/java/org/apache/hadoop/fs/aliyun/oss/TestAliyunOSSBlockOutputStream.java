@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,14 +18,6 @@
 
 package org.apache.hadoop.fs.aliyun.oss;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.aliyun.oss.OSSDataBlocks.ByteBufferBlockFactory;
-import org.apache.hadoop.fs.aliyun.oss.statistics.BlockOutputStreamStatistics;
-import org.apache.hadoop.fs.contract.ContractTestUtils;
-import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -38,6 +30,15 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.aliyun.oss.OSSDataBlocks.ByteBufferBlockFactory;
+import org.apache.hadoop.fs.aliyun.oss.statistics.BlockOutputStreamStatistics;
+import org.apache.hadoop.fs.contract.ContractTestUtils;
+import org.apache.hadoop.test.GenericTestUtils;
+
 import static org.apache.hadoop.fs.aliyun.oss.Constants.BUFFER_DIR_KEY;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.FAST_UPLOAD_BUFFER;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.FAST_UPLOAD_BUFFER_ARRAY_DISK;
@@ -48,6 +49,8 @@ import static org.apache.hadoop.fs.aliyun.oss.Constants.FAST_UPLOAD_BYTEBUFFER_D
 import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_DEFAULT;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.MULTIPART_UPLOAD_PART_SIZE_KEY;
 import static org.apache.hadoop.fs.contract.ContractTestUtils.IO_CHUNK_BUFFER_SIZE;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.FS_OSS_PUT_IF_NOT_EXIST_KEY;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -61,8 +64,7 @@ import static org.junit.Assert.assertTrue;
 public class TestAliyunOSSBlockOutputStream {
   private FileSystem fs;
   private static final int PART_SIZE = 1024 * 1024;
-  private static String testRootPath =
-      AliyunOSSTestUtils.generateUniqueTestPath();
+  private static String testRootPath = AliyunOSSTestUtils.generateUniqueTestPath();
   private static final long MEMORY_LIMIT = 10 * 1024 * 1024;
 
   @Rule
@@ -72,11 +74,11 @@ public class TestAliyunOSSBlockOutputStream {
   public void setUp() throws Exception {
     Configuration conf = new Configuration();
     conf.setInt(MULTIPART_UPLOAD_PART_SIZE_KEY, PART_SIZE);
-    conf.setInt(IO_CHUNK_BUFFER_SIZE,
-        conf.getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 0));
+    conf.setInt(IO_CHUNK_BUFFER_SIZE, conf.getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 0));
     conf.setInt(Constants.UPLOAD_ACTIVE_BLOCKS_KEY, 20);
     conf.setLong(FAST_UPLOAD_BUFFER_MEMORY_LIMIT, MEMORY_LIMIT);
     fs = AliyunOSSTestUtils.createTestFileSystem(conf);
+    Long downloadPartSize = conf.getLong("fs.oss.multipart.download.size", 10);
   }
 
   @After
@@ -100,8 +102,7 @@ public class TestAliyunOSSBlockOutputStream {
   public void testRegularUpload() throws IOException {
     FileSystem.clearStatistics();
     long size = 1024 * 1024;
-    FileSystem.Statistics statistics =
-        FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
+    FileSystem.Statistics statistics = FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
     // This test is a little complicated for statistics, lifecycle is
     // generateTestFile
     //   fs.create(getFileStatus)    read 1
@@ -115,22 +116,54 @@ public class TestAliyunOSSBlockOutputStream {
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(7, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(3, statistics.getWriteOps());
+    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
     assertEquals(14, statistics.getReadOps());
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(6, statistics.getWriteOps());
+    assertEquals(5, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 0
+
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size + 1);
     assertEquals(22, statistics.getReadOps());
     assertEquals(3 * size, statistics.getBytesRead());
-    assertEquals(10, statistics.getWriteOps());
+    assertEquals(8, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 0
     assertEquals(3 * size, statistics.getBytesWritten());
+    bufferShouldReleased();
+  }
+
+  @Test
+  public void testCreateFakeDirectoryIfNecessary() throws IOException {
+
+    Configuration conf = new Configuration();
+    conf.setInt(MULTIPART_UPLOAD_PART_SIZE_KEY, PART_SIZE);
+    conf.setInt(IO_CHUNK_BUFFER_SIZE, conf.getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 0));
+    conf.setInt(Constants.UPLOAD_ACTIVE_BLOCKS_KEY, 20);
+    conf.setLong(FAST_UPLOAD_BUFFER_MEMORY_LIMIT, MEMORY_LIMIT);
+    conf.setBoolean(FS_OSS_PUT_IF_NOT_EXIST_KEY, true);
+    fs = AliyunOSSTestUtils.createTestFileSystem(conf);
+    Long downloadPartSize = conf.getLong("fs.oss.multipart.download.size", 10);
+
+    FileSystem.clearStatistics();
+    long size = 1024 * 1024;
+    FileSystem.Statistics statistics = FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
+    ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
+    assertEquals(6, statistics.getReadOps());
+    assertEquals(size - 1, statistics.getBytesRead());
+    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
+    assertEquals(size - 1, statistics.getBytesWritten());
+    bufferShouldReleased();
+
+    ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
+    assertEquals(12, statistics.getReadOps()); //reduce 2 query ops
+    assertEquals(2 * size - 1, statistics.getBytesRead());
+    assertEquals(6, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 1
+
+    assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
   }
 
@@ -138,26 +171,25 @@ public class TestAliyunOSSBlockOutputStream {
   public void testMultiPartUpload() throws IOException {
     long size = 6 * 1024 * 1024;
     FileSystem.clearStatistics();
-    FileSystem.Statistics statistics =
-        FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
+    FileSystem.Statistics statistics = FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(17, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(8, statistics.getWriteOps());
+    assertEquals(8, statistics.getWriteOps());  //Reduced a create fake directory write operation.
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
     assertEquals(34, statistics.getReadOps());
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(16, statistics.getWriteOps());
+    assertEquals(15, statistics.getWriteOps()); //Reduced a create fake directory write operation.
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size + 1);
     assertEquals(52, statistics.getReadOps());
     assertEquals(3 * size, statistics.getBytesRead());
-    assertEquals(25, statistics.getWriteOps());
+    assertEquals(23, statistics.getWriteOps()); //Reduced a create fake directory write operation.
     assertEquals(3 * size, statistics.getBytesWritten());
     bufferShouldReleased();
   }
@@ -167,8 +199,7 @@ public class TestAliyunOSSBlockOutputStream {
     FileSystem.clearStatistics();
     long size = 50 * 1024 * 1024 - 1;
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
-    FileSystem.Statistics statistics =
-        FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
+    FileSystem.Statistics statistics = FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
     assertEquals(105, statistics.getReadOps());
     assertEquals(size, statistics.getBytesRead());
     assertEquals(52, statistics.getWriteOps());
@@ -190,20 +221,16 @@ public class TestAliyunOSSBlockOutputStream {
   @Test
   public void testMultiPartUploadLimit() throws IOException {
     long partSize1 = AliyunOSSUtils.calculatePartSize(10 * 1024, 100 * 1024);
-    assert(10 * 1024 / partSize1 < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
+    assert (10 * 1024 / partSize1 < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
 
     long partSize2 = AliyunOSSUtils.calculatePartSize(200 * 1024, 100 * 1024);
-    assert(200 * 1024 / partSize2 < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
+    assert (200 * 1024 / partSize2 < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
 
-    long partSize3 = AliyunOSSUtils.calculatePartSize(10000 * 100 * 1024,
-        100 * 1024);
-    assert(10000 * 100 * 1024 / partSize3
-        < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
+    long partSize3 = AliyunOSSUtils.calculatePartSize(10000 * 100 * 1024, 100 * 1024);
+    assert (10000 * 100 * 1024 / partSize3 < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
 
-    long partSize4 = AliyunOSSUtils.calculatePartSize(10001 * 100 * 1024,
-        100 * 1024);
-    assert(10001 * 100 * 1024 / partSize4
-        < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
+    long partSize4 = AliyunOSSUtils.calculatePartSize(10001 * 100 * 1024, 100 * 1024);
+    assert (10001 * 100 * 1024 / partSize4 < Constants.MULTIPART_UPLOAD_PART_NUM_LIMIT);
   }
 
   @Test
@@ -211,8 +238,7 @@ public class TestAliyunOSSBlockOutputStream {
    * This test is used to verify HADOOP-16306.
    * Test small file uploading so that oss fs will upload file directly
    * instead of multi part upload.
-   */
-  public void testSmallUpload() throws IOException {
+   */ public void testSmallUpload() throws IOException {
     long size = fs.getConf().getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 1024);
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     bufferShouldReleased();
@@ -228,30 +254,26 @@ public class TestAliyunOSSBlockOutputStream {
     if (bufferType.equals(FAST_UPLOAD_BUFFER_DISK)) {
       assertNotNull(bufferDir);
       Path bufferPath = new Path(fs.getConf().get(BUFFER_DIR_KEY));
-      FileStatus[] files = bufferPath.getFileSystem(
-          fs.getConf()).listStatus(bufferPath);
+      FileStatus[] files = bufferPath.getFileSystem(fs.getConf()).listStatus(bufferPath);
       // Temporary file should be deleted
       assertEquals(0, files.length);
     } else {
       if (bufferType.equals(FAST_UPLOAD_BYTEBUFFER)) {
-        OSSDataBlocks.ByteBufferBlockFactory
-            blockFactory = (OSSDataBlocks.ByteBufferBlockFactory)
-                ((AliyunOSSFileSystem)fs).getBlockFactory();
-        assertEquals("outstanding buffers in " + blockFactory,
-            0, blockFactory.getOutstandingBufferCount());
+        OSSDataBlocks.ByteBufferBlockFactory blockFactory =
+            (OSSDataBlocks.ByteBufferBlockFactory) ((AliyunOSSFileSystem) fs).getBlockFactory();
+        assertEquals("outstanding buffers in " + blockFactory, 0,
+            blockFactory.getOutstandingBufferCount());
       }
     }
     BlockOutputStreamStatistics statistics =
-        ((AliyunOSSFileSystem)fs).getBlockOutputStreamStatistics();
-    assertEquals(statistics.getBlocksAllocated(),
-        statistics.getBlocksReleased());
+        ((AliyunOSSFileSystem) fs).getBlockOutputStreamStatistics();
+    assertEquals(statistics.getBlocksAllocated(), statistics.getBlocksReleased());
     if (zeroSizeFile) {
       assertEquals(statistics.getBlocksAllocated(), 0);
     } else {
       assertTrue(statistics.getBlocksAllocated() >= 1);
     }
-    assertEquals(statistics.getBytesReleased(),
-        statistics.getBytesAllocated());
+    assertEquals(statistics.getBytesReleased(), statistics.getBytesAllocated());
   }
 
   @Test
@@ -267,10 +289,9 @@ public class TestAliyunOSSBlockOutputStream {
       Field field = c.getDeclaredField("files");
       field.setAccessible(true);
       String name = field.getName();
-      LinkedHashSet<String> files = (LinkedHashSet<String>)field.get(name);
+      LinkedHashSet<String> files = (LinkedHashSet<String>) field.get(name);
       assertTrue("in DeleteOnExitHook", files.isEmpty());
-      assertFalse("in DeleteOnExitHook",
-          (new ArrayList<>(files)).contains(tmp.getPath()));
+      assertFalse("in DeleteOnExitHook", (new ArrayList<>(files)).contains(tmp.getPath()));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -290,48 +311,39 @@ public class TestAliyunOSSBlockOutputStream {
     tmp1.delete();
     File tmp2 = AliyunOSSUtils.createTmpFileForWrite("out-", 1024, conf);
     tmp2.delete();
-    assertNotEquals("round robin not working",
-        tmp1.getParent(), tmp2.getParent());
+    assertNotEquals("round robin not working", tmp1.getParent(), tmp2.getParent());
   }
 
   @Test
   public void testByteBufferIO() throws IOException {
-    try (OSSDataBlocks.ByteBufferBlockFactory factory =
-         new OSSDataBlocks.ByteBufferBlockFactory((AliyunOSSFileSystem)fs)) {
+    try (OSSDataBlocks.ByteBufferBlockFactory factory = new OSSDataBlocks.ByteBufferBlockFactory(
+        (AliyunOSSFileSystem) fs)) {
       int limit = 128;
-      OSSDataBlocks.ByteBufferBlockFactory.ByteBufferBlock block
-          = factory.create(1, limit, null);
-      assertEquals("outstanding buffers in " + factory,
-          1, factory.getOutstandingBufferCount());
+      OSSDataBlocks.ByteBufferBlockFactory.ByteBufferBlock block = factory.create(1, limit, null);
+      assertEquals("outstanding buffers in " + factory, 1, factory.getOutstandingBufferCount());
 
       byte[] buffer = ContractTestUtils.toAsciiByteArray("test data");
       int bufferLen = buffer.length;
       block.write(buffer, 0, bufferLen);
       assertEquals(bufferLen, block.dataSize());
-      assertEquals("capacity in " + block,
-          limit - bufferLen, block.remainingCapacity());
+      assertEquals("capacity in " + block, limit - bufferLen, block.remainingCapacity());
       assertTrue("hasCapacity(64) in " + block, block.hasCapacity(64));
-      assertTrue("No capacity in " + block,
-          block.hasCapacity(limit - bufferLen));
+      assertTrue("No capacity in " + block, block.hasCapacity(limit - bufferLen));
 
       // now start the write
       OSSDataBlocks.BlockUploadData blockUploadData = block.startUpload();
-      ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream
-          stream =
-          (ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream)
-              blockUploadData.getUploadStream();
+      ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream stream =
+          (ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream) blockUploadData.getUploadStream();
       assertTrue("Mark not supported in " + stream, stream.markSupported());
       assertTrue("!hasRemaining() in " + stream, stream.hasRemaining());
 
       int expected = bufferLen;
-      assertEquals("wrong available() in " + stream,
-          expected, stream.available());
+      assertEquals("wrong available() in " + stream, expected, stream.available());
 
       assertEquals('t', stream.read());
       stream.mark(limit);
       expected--;
-      assertEquals("wrong available() in " + stream,
-          expected, stream.available());
+      assertEquals("wrong available() in " + stream, expected, stream.available());
 
       // read into a byte array with an offset
       int offset = 5;
@@ -340,8 +352,7 @@ public class TestAliyunOSSBlockOutputStream {
       assertEquals('e', in[offset]);
       assertEquals('s', in[offset + 1]);
       expected -= 2;
-      assertEquals("wrong available() in " + stream,
-          expected, stream.available());
+      assertEquals("wrong available() in " + stream, expected, stream.available());
 
       // read to end
       byte[] remainder = new byte[limit];
@@ -353,8 +364,7 @@ public class TestAliyunOSSBlockOutputStream {
       assertEquals(expected, index);
       assertEquals('a', remainder[--index]);
 
-      assertEquals("wrong available() in " + stream,
-          0, stream.available());
+      assertEquals("wrong available() in " + stream, 0, stream.available());
       assertTrue("hasRemaining() in " + stream, !stream.hasRemaining());
 
       // go the mark point
@@ -363,14 +373,11 @@ public class TestAliyunOSSBlockOutputStream {
 
       // when the stream is closed, the data should be returned
       stream.close();
-      assertEquals("outstanding buffers in " + factory,
-          1, factory.getOutstandingBufferCount());
+      assertEquals("outstanding buffers in " + factory, 1, factory.getOutstandingBufferCount());
       block.close();
-      assertEquals("outstanding buffers in " + factory,
-          0, factory.getOutstandingBufferCount());
+      assertEquals("outstanding buffers in " + factory, 0, factory.getOutstandingBufferCount());
       stream.close();
-      assertEquals("outstanding buffers in " + factory,
-          0, factory.getOutstandingBufferCount());
+      assertEquals("outstanding buffers in " + factory, 0, factory.getOutstandingBufferCount());
     }
   }
 
@@ -393,27 +400,22 @@ public class TestAliyunOSSBlockOutputStream {
     fs = AliyunOSSTestUtils.createTestFileSystem(conf);
     long size = 5 * MEMORY_LIMIT;
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
-    OSSDataBlocks.MemoryBlockFactory
-        blockFactory = ((OSSDataBlocks.MemoryAndDiskBlockFactory)
-        ((AliyunOSSFileSystem)fs).getBlockFactory()).getMemoryFactory();
+    OSSDataBlocks.MemoryBlockFactory blockFactory =
+        ((OSSDataBlocks.MemoryAndDiskBlockFactory) ((AliyunOSSFileSystem) fs).getBlockFactory()).getMemoryFactory();
     assertEquals(blockFactory.getMemoryUsed(), 0);
 
     Path bufferPath = new Path(fs.getConf().get(BUFFER_DIR_KEY));
-    FileStatus[] files = bufferPath.getFileSystem(
-        fs.getConf()).listStatus(bufferPath);
+    FileStatus[] files = bufferPath.getFileSystem(fs.getConf()).listStatus(bufferPath);
     // Temporary file should be deleted
     assertEquals(0, files.length);
 
     BlockOutputStreamStatistics statistics =
-        ((AliyunOSSFileSystem)fs).getBlockOutputStreamStatistics();
-    assertEquals(statistics.getBlocksAllocated(),
-        statistics.getBlocksReleased());
+        ((AliyunOSSFileSystem) fs).getBlockOutputStreamStatistics();
+    assertEquals(statistics.getBlocksAllocated(), statistics.getBlocksReleased());
     assertTrue(statistics.getBlocksAllocated() > 1);
-    assertEquals(statistics.getBytesReleased(),
-        statistics.getBytesAllocated());
+    assertEquals(statistics.getBytesReleased(), statistics.getBytesAllocated());
     assertTrue(statistics.getBytesAllocated() >= MEMORY_LIMIT);
     assertTrue(statistics.getDiskBlocksAllocated() > 0);
-    assertEquals(statistics.getDiskBlocksAllocated(),
-        statistics.getDiskBlocksReleased());
+    assertEquals(statistics.getDiskBlocksAllocated(), statistics.getDiskBlocksReleased());
   }
 }
