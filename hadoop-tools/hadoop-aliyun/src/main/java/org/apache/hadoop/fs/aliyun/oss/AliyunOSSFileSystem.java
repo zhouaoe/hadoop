@@ -535,7 +535,7 @@ public class AliyunOSSFileSystem extends FileSystem {
    *
    * @param key directory path
    * @return true if directory is successfully created
-   * @throws IOException
+   * @throws IOException if there is any error
    */
   protected boolean mkdir(final String key) throws IOException {
     String dirName = key;
@@ -589,21 +589,6 @@ public class AliyunOSSFileSystem extends FileSystem {
       fPart = fPart.getParent();
     } while (fPart != null);
   }
-
-  // @Override
-  // public FSDataInputStream open(Path path, int bufferSize) throws IOException {
-  //   final FileStatus fileStatus = getFileStatus(path);
-  //   if (fileStatus.isDirectory()) {
-  //     throw new FileNotFoundException("Can't open " + path +
-  //         " because it is a directory");
-  //   }
-
-  //   return new FSDataInputStream(new AliyunOSSInputStream(getConf(),
-  //       new SemaphoredDelegatingExecutor(
-  //           boundedThreadPool, maxReadAheadPartNumber, true),
-  //       maxReadAheadPartNumber, store, pathToKey(path), fileStatus.getLen(),
-  //       statistics));
-  // }
 
   @Override
   public FSDataInputStream open(Path path, int bufferSize) throws IOException {
@@ -716,6 +701,7 @@ public class AliyunOSSFileSystem extends FileSystem {
    * @param srcPath source path.
    * @param dstPath destination path.
    * @return true if directory is successfully copied.
+   * @throws IOException if there is any exception.
    */
   protected boolean copyDirectory(Path srcPath, Path dstPath) throws IOException {
     String srcKey = AliyunOSSUtils

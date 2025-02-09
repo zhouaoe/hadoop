@@ -105,25 +105,25 @@ public class TestAliyunOSSBlockOutputStream {
     FileSystem.Statistics statistics = FileSystem.getStatistics("oss", AliyunOSSFileSystem.class);
     // This test is a little complicated for statistics, lifecycle is
     // generateTestFile
-    //   fs.create(getFileStatus)    read 1
-    //   output stream write         write 1
-    // path exists(fs.exists)        read 1
+    // fs.create(getFileStatus) read 1
+    // output stream write write 1
+    // path exists(fs.exists) read 1
     // verifyReceivedData
-    //   fs.open(getFileStatus)      read 1
-    //   input stream read           read 2(part size is 512K)
+    // fs.open(getFileStatus) read 1
+    // input stream read read 2(part size is 512K)
     // fs.delete
-    //   getFileStatus & delete & exists & create fake dir read 2, write 2
+    // getFileStatus & delete & exists & create fake dir read 2, write 2
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(7, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
+    assertEquals(3, statistics.getWriteOps()); // write 1 delete 1 create fake dir write 1
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
     assertEquals(14, statistics.getReadOps());
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(5, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 0
+    assertEquals(5, statistics.getWriteOps()); // write 1 delete 1 create fake dir write 0
 
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
@@ -131,7 +131,7 @@ public class TestAliyunOSSBlockOutputStream {
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size + 1);
     assertEquals(22, statistics.getReadOps());
     assertEquals(3 * size, statistics.getBytesRead());
-    assertEquals(8, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 0
+    assertEquals(8, statistics.getWriteOps()); // write 1 delete 1 create fake dir write 0
     assertEquals(3 * size, statistics.getBytesWritten());
     bufferShouldReleased();
   }
@@ -154,14 +154,14 @@ public class TestAliyunOSSBlockOutputStream {
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(6, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(3, statistics.getWriteOps());//write 1 delete 1 create fake dir write 1
+    assertEquals(3, statistics.getWriteOps()); // write 1 delete 1 create fake dir write 1
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
-    assertEquals(12, statistics.getReadOps()); //reduce 2 query ops
+    assertEquals(12, statistics.getReadOps()); // reduce 2 query ops
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(6, statistics.getWriteOps()); //write 1 delete 1 create fake dir write 1
+    assertEquals(6, statistics.getWriteOps()); // write 1 delete 1 create fake dir write 1
 
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
@@ -175,21 +175,21 @@ public class TestAliyunOSSBlockOutputStream {
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     assertEquals(17, statistics.getReadOps());
     assertEquals(size - 1, statistics.getBytesRead());
-    assertEquals(8, statistics.getWriteOps());  //Reduced a create fake directory write operation.
+    assertEquals(8, statistics.getWriteOps()); // Reduced a create fake directory write operation.
     assertEquals(size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
     assertEquals(34, statistics.getReadOps());
     assertEquals(2 * size - 1, statistics.getBytesRead());
-    assertEquals(15, statistics.getWriteOps()); //Reduced a create fake directory write operation.
+    assertEquals(15, statistics.getWriteOps()); // Reduced a create fake directory write operation.
     assertEquals(2 * size - 1, statistics.getBytesWritten());
     bufferShouldReleased();
 
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size + 1);
     assertEquals(52, statistics.getReadOps());
     assertEquals(3 * size, statistics.getBytesRead());
-    assertEquals(23, statistics.getWriteOps()); //Reduced a create fake directory write operation.
+    assertEquals(23, statistics.getWriteOps()); // Reduced a create fake directory write operation.
     assertEquals(3 * size, statistics.getBytesWritten());
     bufferShouldReleased();
   }
@@ -238,7 +238,8 @@ public class TestAliyunOSSBlockOutputStream {
    * This test is used to verify HADOOP-16306.
    * Test small file uploading so that oss fs will upload file directly
    * instead of multi part upload.
-   */ public void testSmallUpload() throws IOException {
+   */
+  public void testSmallUpload() throws IOException {
     long size = fs.getConf().getInt(MULTIPART_UPLOAD_PART_SIZE_KEY, 1024);
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size - 1);
     bufferShouldReleased();
@@ -259,14 +260,13 @@ public class TestAliyunOSSBlockOutputStream {
       assertEquals(0, files.length);
     } else {
       if (bufferType.equals(FAST_UPLOAD_BYTEBUFFER)) {
-        OSSDataBlocks.ByteBufferBlockFactory blockFactory =
-            (OSSDataBlocks.ByteBufferBlockFactory) ((AliyunOSSFileSystem) fs).getBlockFactory();
+        OSSDataBlocks.ByteBufferBlockFactory blockFactory = (OSSDataBlocks.ByteBufferBlockFactory) ((AliyunOSSFileSystem) fs)
+            .getBlockFactory();
         assertEquals("outstanding buffers in " + blockFactory, 0,
             blockFactory.getOutstandingBufferCount());
       }
     }
-    BlockOutputStreamStatistics statistics =
-        ((AliyunOSSFileSystem) fs).getBlockOutputStreamStatistics();
+    BlockOutputStreamStatistics statistics = ((AliyunOSSFileSystem) fs).getBlockOutputStreamStatistics();
     assertEquals(statistics.getBlocksAllocated(), statistics.getBlocksReleased());
     if (zeroSizeFile) {
       assertEquals(statistics.getBlocksAllocated(), 0);
@@ -332,8 +332,8 @@ public class TestAliyunOSSBlockOutputStream {
 
       // now start the write
       OSSDataBlocks.BlockUploadData blockUploadData = block.startUpload();
-      ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream stream =
-          (ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream) blockUploadData.getUploadStream();
+      ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream stream = (ByteBufferBlockFactory.ByteBufferBlock.ByteBufferInputStream) blockUploadData
+          .getUploadStream();
       assertTrue("Mark not supported in " + stream, stream.markSupported());
       assertTrue("!hasRemaining() in " + stream, stream.hasRemaining());
 
@@ -400,8 +400,8 @@ public class TestAliyunOSSBlockOutputStream {
     fs = AliyunOSSTestUtils.createTestFileSystem(conf);
     long size = 5 * MEMORY_LIMIT;
     ContractTestUtils.createAndVerifyFile(fs, getTestPath(), size);
-    OSSDataBlocks.MemoryBlockFactory blockFactory =
-        ((OSSDataBlocks.MemoryAndDiskBlockFactory) ((AliyunOSSFileSystem) fs).getBlockFactory()).getMemoryFactory();
+    OSSDataBlocks.MemoryBlockFactory blockFactory = ((OSSDataBlocks.MemoryAndDiskBlockFactory) ((AliyunOSSFileSystem) fs)
+        .getBlockFactory()).getMemoryFactory();
     assertEquals(blockFactory.getMemoryUsed(), 0);
 
     Path bufferPath = new Path(fs.getConf().get(BUFFER_DIR_KEY));
@@ -409,8 +409,7 @@ public class TestAliyunOSSBlockOutputStream {
     // Temporary file should be deleted
     assertEquals(0, files.length);
 
-    BlockOutputStreamStatistics statistics =
-        ((AliyunOSSFileSystem) fs).getBlockOutputStreamStatistics();
+    BlockOutputStreamStatistics statistics = ((AliyunOSSFileSystem) fs).getBlockOutputStreamStatistics();
     assertEquals(statistics.getBlocksAllocated(), statistics.getBlocksReleased());
     assertTrue(statistics.getBlocksAllocated() > 1);
     assertEquals(statistics.getBytesReleased(), statistics.getBytesAllocated());

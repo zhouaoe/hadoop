@@ -79,7 +79,7 @@ public class TestAliyunOSSFileSystemDeleteFile extends AbstractOSSMockTest {
     setMockList(listVersion, BUCKET, "", false, parentDir, 100, new ArrayList<>(),
         new ArrayList<>());
     boolean res = fs.delete(path, true);
-    assertTrue(res == true);
+    assertTrue(res);
 
     Mockito.verify(ossClient, Mockito.times(1))
         .getObjectMetadata(argThat(request -> request.getKey().equals(key)));
@@ -133,7 +133,7 @@ public class TestAliyunOSSFileSystemDeleteFile extends AbstractOSSMockTest {
     Mockito.when(ossClient.deleteObjects(any())).thenReturn(result);
 
     boolean res = fs.delete(path, true);
-    assertTrue(res == true);
+    assertTrue(res);
 
     Mockito.verify(ossClient, Mockito.times(0)).deleteObject(BUCKET, keyDir);
     //batch delete
@@ -176,7 +176,7 @@ public class TestAliyunOSSFileSystemDeleteFile extends AbstractOSSMockTest {
     result.setDeletedObjects(Arrays.asList(keyDir));
     Mockito.when(ossClient.deleteObjects(any())).thenReturn(result);
     boolean res = fs.delete(path, false);
-    assertTrue(res == true);
+    assertTrue(res);
     Mockito.verify(ossClient, Mockito.times(1)).deleteObject(BUCKET, keyDir);
     Mockito.verify(ossClient, Mockito.times(0))
         .putObject(eq(BUCKET), eq(parentDir), any(InputStream.class), any(ObjectMetadata.class));

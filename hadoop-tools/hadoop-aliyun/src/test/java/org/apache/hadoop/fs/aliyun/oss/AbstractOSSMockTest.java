@@ -64,9 +64,9 @@ public abstract class AbstractOSSMockTest {
   protected static final int LIST_V1 = 1;
   protected static final int LIST_V2 = 2;
 
-  protected static final ServiceException NOT_FOUND =
-      new OSSException("Not Found", OSSErrorCode.NO_SUCH_KEY, "requestIdtest", "hostIdtest",
-          "headertest", "resourceTypetest", "methodTest");
+  protected static final ServiceException NOT_FOUND = new OSSException("Not Found", OSSErrorCode.NO_SUCH_KEY,
+      "requestIdtest", "hostIdtest",
+      "headertest", "resourceTypetest", "methodTest");
 
   protected Configuration conf;
 
