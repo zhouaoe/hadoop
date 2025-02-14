@@ -19,35 +19,22 @@
 package org.apache.hadoop.fs.aliyun.oss;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileSystemContractBaseTest;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import static org.apache.hadoop.fs.contract.ContractTestUtils.dataset;
-import static org.apache.hadoop.fs.contract.ContractTestUtils.createFile;
-
-import org.apache.hadoop.security.UserGroupInformation;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.FileNotFoundException;
+
 import java.io.IOException;
 import java.net.URI;
-import java.util.Arrays;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeNotNull;
-import static org.junit.Assume.assumeTrue;
-
-import static org.apache.hadoop.fs.aliyun.oss.Constants.SIGNATURE_VERSION_KEY;
 import static org.apache.hadoop.fs.aliyun.oss.Constants.REGION_KEY;
+import static org.apache.hadoop.fs.aliyun.oss.Constants.SIGNATURE_VERSION_KEY;
+import static org.apache.hadoop.fs.contract.ContractTestUtils.createFile;
+import static org.apache.hadoop.fs.contract.ContractTestUtils.dataset;
+import static org.junit.Assert.*;
+import static org.junit.Assume.assumeNotNull;
 
 /**
  * Tests Aliyun OSS system.
@@ -86,10 +73,10 @@ public class ITAliyunOSSSignatureV4 {
     fs.initialize(testURI, conf);
     assumeNotNull(fs);
 
-    Path testFile = new Path("/test/atestr");
-    createFile(fs, testFile, true, dataset(256, 0, 255));
-    FileStatus status = fs.getFileStatus(testFile);
-    fs.delete(testFile);
+    Path testFile2 = new Path("/test/atestr");
+    createFile(fs, testFile2, true, dataset(256, 0, 255));
+    FileStatus status = fs.getFileStatus(testFile2);
+    fs.delete(testFile2);
     fs.close();
   }
 
@@ -97,11 +84,15 @@ public class ITAliyunOSSSignatureV4 {
   public void testV4WithoutRegion() throws IOException {
     conf.set(SIGNATURE_VERSION_KEY, "V4");
     AliyunOSSFileSystem fs = new AliyunOSSFileSystem();
+    IOException expectedException = null;
     try {
       fs.initialize(testURI, conf);
-    } catch (IllegalArgumentException e) {
+    } catch (IOException e) {
       LOG.warn("use V4 , but do not set region, get exception={}", e);
-      assertEquals("se V4 , but do not set region", e.getMessage(), "SignVersion is V4 but region is empty");
+      expectedException = e;
+      assertEquals("use V4 , but do not set region", e.getMessage(),
+              "SignVersion is V4 but region is empty");
     }
+    assertNotNull(expectedException);
   }
 }

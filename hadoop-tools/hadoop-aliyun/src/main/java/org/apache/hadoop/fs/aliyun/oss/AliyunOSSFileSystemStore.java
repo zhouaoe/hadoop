@@ -120,7 +120,7 @@ public class AliyunOSSFileSystemStore {
       clientConf.setSignatureVersion(SignVersion.V4);
       if (StringUtils.isEmpty(region)) {
         LOG.error("Signature version is V4 ,but region is empty.");
-        throw new IllegalArgumentException("SignVersion is V4 but region is empty");
+        throw new IOException("SignVersion is V4 but region is empty");
       }
     }
 

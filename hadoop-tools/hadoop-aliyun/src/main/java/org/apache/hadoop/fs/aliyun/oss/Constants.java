@@ -218,12 +218,12 @@ public final class Constants {
   public static final String SIGNATURE_VERSION_KEY = "fs.oss.signatureversion";
 
   /**
-   * OSS signature version DEFAULT {@value}
+   * OSS signature version DEFAULT {@value}.
    */
   public static final String SIGNATURE_VERSION_DEFAULT = "V1";
 
   /**
-   * OSS region {@value}
+   * OSS region {@value}.
    */
   public static final String REGION_KEY = "fs.oss.region";
 }
